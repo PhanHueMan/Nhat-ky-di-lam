@@ -466,7 +466,38 @@
     .shipment-name{font-size:13.5px;}
   }
 </style>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-app.js";
+
+  import {
+    getDatabase,
+    ref,
+    get,
+    set
+  } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-database.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyD8zsFJMsqNpCu491-GAzBYq8dqTZBqHew",
+    authDomain: "nhat-ky-di-lam.firebaseapp.com",
+    databaseURL: "https://nhat-ky-di-lam-default-rtdb.firebaseio.com",
+    projectId: "nhat-ky-di-lam",
+    storageBucket: "nhat-ky-di-lam.firebasestorage.app",
+    messagingSenderId: "123680164523",
+    appId: "1:123680164523:web:be4fcdb5e1118780ae85ee"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+
+  window.firebaseDB = db;
+  window.firebaseRef = ref;
+  window.firebaseGet = get;
+  window.firebaseSet = set;
+</script>
+
 </head>
+  
 <body>
 <div class="wrap">
 
@@ -694,27 +725,59 @@ function downloadIcs(content, filename){
   URL.revokeObjectURL(url);
 }
 
-
 async function loadState(){
-  try{
-    const res = await window.storage.get(STORAGE_KEY, false);
-    if(res && res.value){
-      state = JSON.parse(res.value);
-      if(!Array.isArray(state.items)) state.items = [];
-      if(!Array.isArray(state.shipments)) state.shipments = [];
+  try {
+    const snapshot = await window.firebaseGet(
+      window.firebaseRef(window.firebaseDB, 'checklist')
+    );
+
+    const data = snapshot.val();
+
+    if (data) {
+      state = data;
+
+      if (!Array.isArray(state.items)) state.items = [];
+      if (!Array.isArray(state.shipments)) state.shipments = [];
+
     } else {
-      state = { items: SEED_ITEMS.map(it=>({id:uid(),...it})), shipments: [] };
+      state = {
+        items: SEED_ITEMS.map(it => ({
+          id: uid(),
+          ...it
+        })),
+        shipments: []
+      };
+
       await saveState();
     }
-  }catch(e){
-    state = { items: SEED_ITEMS.map(it=>({id:uid(),...it})), shipments: [] };
+
+  } catch(e) {
+    console.error('Firebase load checklist error:', e);
+
+    state = {
+      items: SEED_ITEMS.map(it => ({
+        id: uid(),
+        ...it
+      })),
+      shipments: []
+    };
   }
+
   render();
 }
 
 async function saveState(){
-  try{ await window.storage.set(STORAGE_KEY, JSON.stringify(state), false); }
-  catch(e){ console.error('Lưu dữ liệu thất bại', e); }
+  try {
+    await window.firebaseSet(
+      window.firebaseRef(window.firebaseDB, 'checklist'),
+      state
+    );
+
+    console.log('Firebase: đã lưu checklist');
+
+  } catch(e) {
+    console.error('Firebase save checklist error:', e);
+  }
 }
 
 function itemsForType(type){
