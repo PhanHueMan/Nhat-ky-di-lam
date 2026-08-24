@@ -1,19 +1,20 @@
-function loadFirebase() {
-    var script1 = document.createElement('script');
-    script1.src = "https://gstatic.com";
-    var script2 = document.createElement('script');
-    script2.src = "https://gstatic.com";
+// Tải trực tiếp thư viện Firebase bằng thẻ script chuẩn gắn thẳng vào trang
+(function() {
+    var s1 = document.createElement('script');
+    s1.src = "https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js";
+    var s2 = document.createElement('script');
+    s2.src = "https://gstatic.com";
     
-    script1.onload = function() {
-        document.head.appendChild(script2);
+    document.head.appendChild(s1);
+    s1.onload = function() {
+        document.head.appendChild(s2);
+        s2.onload = function() {
+            initFirebaseSync();
+        };
     };
-    script2.onload = function() {
-        startSync();
-    };
-    document.head.appendChild(script1);
-}
+})();
 
-function startSync() {
+function initFirebaseSync() {
     const firebaseConfig = {
         apiKey: "AIzaSyD8zsFJMsqNpCu491-GAzByQ8dqTZBqHew",
         authDomain: "://firebaseapp.com",
@@ -25,11 +26,13 @@ function startSync() {
         measurementId: "G-GNRPY00TMV"
     };
   
-    firebase.initializeApp(firebaseConfig);
+    if (!firebase.apps.length) {
+        firebase.initializeApp(firebaseConfig);
+    }
     const database = firebase.database();
     let isTyping = false;
 
-    // Hàm thực hiện đổ dữ liệu từ mạng đè lên màn hình
+    // Hàm tự động đổ dữ liệu từ mạng đè lên màn hình
     function forceFillData() {
         database.ref('dulieu_nhatky/').once('value').then((snapshot) => {
             const data = snapshot.val();
@@ -49,24 +52,24 @@ function startSync() {
         });
     }
 
-    // 1. ÉP TẢI DỮ LIỆU LIÊN TỤC: Cứ 1 giây là ép dữ liệu mạng hiển thị ra màn hình, chống lệnh xóa cũ
+    // Chạy lệnh tải dữ liệu ngay khi kết nối mạng xong xuôi
+    forceFillData();
+
+    // ÉP TẢI DỮ LIỆU LIÊN TỤC: Cứ 1 giây là ép dữ liệu mạng hiển thị, chống lệnh xóa tự động cũ
     setInterval(() => {
-        if (!isTyping) {
-            forceFillData();
-        }
+        if (!isTyping) { forceFillData(); }
     }, 1000);
 
-    // Theo dõi khi người dùng bắt đầu gõ chữ thì tạm dừng ép dữ liệu về để không bị khựng
+    // Lắng nghe người dùng gõ chữ
     document.addEventListener('input', function() {
         isTyping = true;
     });
 
-    // 2. TỰ ĐỘNG LƯU: Cứ sau mỗi 2 giây là tự động quét 10 ô nhập liệu quăng lên mạng
+    // TỰ ĐỘNG LƯU: Cứ sau 2 giây gõ xong là tự bốc toàn bộ dữ liệu quăng lên mạng
     setInterval(() => {
         if (isTyping) {
             let dataToSave = {};
             const inputs = document.querySelectorAll('input, textarea, select');
-            
             inputs.forEach(input => {
                 let key = input.id || input.name;
                 if (key) {
@@ -83,5 +86,3 @@ function startSync() {
         }
     }, 2000);
 }
-
-window.addEventListener('DOMContentLoaded', loadFirebase);
