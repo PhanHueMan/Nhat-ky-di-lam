@@ -1,6 +1,28 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
+ <script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-app.js";
+  import {
+    getDatabase,
+    ref,
+    set,
+    get
+  } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-database.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyD8zsFJMsqNpCu491-GAzBYq8dqTZBqHew",
+    authDomain: "nhat-ky-di-lam.firebaseapp.com",
+    databaseURL: "https://nhat-ky-di-lam-default-rtdb.firebaseio.com",
+    projectId: "nhat-ky-di-lam",
+    storageBucket: "nhat-ky-di-lam.firebasestorage.app",
+    messagingSenderId: "123680164523",
+    appId: "1:123680164523:web:be4fcdb5e1118780ae85ee"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+</script>
 <meta charset="UTF-8">
 <title>Nhật Ký Làm Việc Của Mẫn</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
@@ -681,15 +703,47 @@ function buildDailyQuote(){
   return `${a}. ${b}.`;
 }
  
-/* ---------- storage ---------- */
+/* ---------- Firebase storage ---------- */
 async function loadAll(){
-  try{ const r = await window.storage.get('lots', false); lots = r ? JSON.parse(r.value) : []; }catch(e){ lots = []; }
-  try{ const r = await window.storage.get('entries', false); logs = r ? JSON.parse(r.value) : []; }catch(e){ logs = []; }
-  try{ const r = await window.storage.get('reflections', false); reflections = r ? JSON.parse(r.value) : {}; }catch(e){ reflections = {}; }
+  try {
+    const snapshot = await get(ref(db, '/'));
+    const data = snapshot.val() || {};
+
+    lots = data.lots || [];
+    logs = data.entries || [];
+    reflections = data.reflections || {};
+
+  } catch(e) {
+    console.error('Firebase load error:', e);
+    lots = [];
+    logs = [];
+    reflections = {};
+  }
 }
-async function saveLots(){ try{ await window.storage.set('lots', JSON.stringify(lots), false); }catch(e){ console.error(e); } }
-async function saveLogs(){ try{ await window.storage.set('entries', JSON.stringify(logs), false); }catch(e){ console.error(e); } }
-async function saveReflections(){ try{ await window.storage.set('reflections', JSON.stringify(reflections), false); }catch(e){ console.error(e); } }
+
+async function saveLots(){
+  try {
+    await set(ref(db, 'lots'), lots);
+  } catch(e) {
+    console.error('Firebase save lots error:', e);
+  }
+}
+
+async function saveLogs(){
+  try {
+    await set(ref(db, 'entries'), logs);
+  } catch(e) {
+    console.error('Firebase save entries error:', e);
+  }
+}
+
+async function saveReflections(){
+  try {
+    await set(ref(db, 'reflections'), reflections);
+  } catch(e) {
+    console.error('Firebase save reflections error:', e);
+  }
+}
  
 /* ---------- ISO week helpers ---------- */
 function getISOWeek(dateStr){
