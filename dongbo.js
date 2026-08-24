@@ -1,4 +1,3 @@
-// Tải thư viện Firebase hỗ trợ đồng bộ ngầm bằng cách tự động chèn vào đầu trang
 function loadFirebase() {
     var script1 = document.createElement('script');
     script1.src = "https://gstatic.com";
@@ -15,7 +14,6 @@ function loadFirebase() {
 }
 
 function startSync() {
-    // Cấu hình kết nối tới kho dữ liệu Firebase của bạn
     const firebaseConfig = {
         apiKey: "AIzaSyD8zsFJMsqNpCu491-GAzByQ8dqTZBqHew",
         authDomain: "://firebaseapp.com",
@@ -30,31 +28,38 @@ function startSync() {
     firebase.initializeApp(firebaseConfig);
     const database = firebase.database();
 
-    // Lắng nghe dữ liệu thay đổi trên mạng để cập nhật về màn hình
+    // 1. TỰ ĐỘNG ĐỔ DỮ LIỆU VỀ: Lắng nghe mạng và điền vào đúng các ô id của bạn
     database.ref('dulieu_nhatky/').on('value', (snapshot) => {
         const data = snapshot.val();
         if (data) {
-           console.log("Đã nhận dữ liệu đồng bộ mới nhất từ đám mây!");
-           // Tự động tìm và điền vào các ô nhập liệu nếu có
+           console.log("Đã nhận dữ liệu đồng bộ mới!");
+           
+           // Tự động tìm tất cả các ô input, textarea, select trên trang web của bạn
            const inputs = document.querySelectorAll('input, textarea, select');
            inputs.forEach(input => {
-               if(data[input.id || input.name]) {
-                   input.value = data[input.id || input.name];
+               let key = input.id || input.name;
+               if(key && data[key] !== undefined) {
+                   // Điền dữ liệu từ mạng vào màn hình (cho cả đt và máy tính)
+                   if (input.type === 'checkbox') {
+                       input.checked = data[key];
+                   } else {
+                       input.value = data[key];
+                   }
                }
            });
         }
     });
 
-    // Lắng nghe sự kiện người dùng nhập liệu để tự động lưu lên mạng
+    // 2. TỰ ĐỘNG GỬI DỮ LIỆU LÊN: Khi bạn gõ chữ hoặc tích chọn ô vuông
     document.addEventListener('change', function(e) {
         if(e.target.matches('input, textarea, select')) {
             let key = e.target.id || e.target.name;
             if(key) {
-                database.ref('dulieu_nhatky/' + key).set(e.target.value);
+                let val = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
+                database.ref('dulieu_nhatky/' + key).set(val);
             }
         }
     });
 }
 
-// Chạy kích hoạt khi trang web tải xong
 window.addEventListener('DOMContentLoaded', loadFirebase);
