@@ -728,45 +728,33 @@ function downloadIcs(content, filename){
 }
 
 async function loadState(){
-   await window.firebaseReady;
   try {
     const snapshot = await window.firebaseGet(
       window.firebaseRef(window.firebaseDB, 'checklist')
     );
 
-    const data = snapshot.val();
+    const data = snapshot.val() || {};
 
-    if (data) {
-      state = data;
+    state = {
+      items: Array.isArray(data.items)
+        ? data.items
+        : Object.values(data.items || {}),
 
-      if (!Array.isArray(state.items)) state.items = [];
-      if (!Array.isArray(state.shipments)) state.shipments = [];
+      shipments: Array.isArray(data.shipments)
+        ? data.shipments
+        : Object.values(data.shipments || {})
+    };
 
-    } else {
-      state = {
-        items: SEED_ITEMS.map(it => ({
-          id: uid(),
-          ...it
-        })),
-        shipments: []
-      };
-
-      await saveState();
-    }
+    render();
 
   } catch(e) {
     console.error('Firebase load checklist error:', e);
-
     state = {
-      items: SEED_ITEMS.map(it => ({
-        id: uid(),
-        ...it
-      })),
+      items: SEED_ITEMS.map(it => ({id: uid(), ...it})),
       shipments: []
     };
+    render();
   }
-
-  render();
 }
 
 async function saveState(){
