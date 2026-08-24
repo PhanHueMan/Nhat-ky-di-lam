@@ -14,6 +14,7 @@ function loadFirebase() {
 }
 
 function startSync() {
+    // Sử dụng đúng thông số cấu hình từ hình ảnh Firebase của bạn
     const firebaseConfig = {
         apiKey: "AIzaSyD8zsFJMsqNpCu491-GAzByQ8dqTZBqHew",
         authDomain: "://firebaseapp.com",
@@ -27,12 +28,15 @@ function startSync() {
   
     firebase.initializeApp(firebaseConfig);
     const database = firebase.database();
+    let isTyping = false;
 
-    // 1. TỰ ĐỘNG TẢI DỮ LIỆU VỀ MÀN HÌNH (Cả ĐT và Máy tính)
+    // 1. TỰ ĐỘNG TẢI DỮ LIỆU VỀ: Lắng nghe mạng và điền vào các ô id trên màn hình
     database.ref('dulieu_nhatky/').on('value', (snapshot) => {
+        if (isTyping) return; // Nếu đang gõ thì tạm thời không đè dữ liệu về
+
         const data = snapshot.val();
         if (data) {
-           console.log("Đã đồng bộ dữ liệu mới nhất!");
+           console.log("Đã cập nhật dữ liệu mới từ đám mây!");
            const inputs = document.querySelectorAll('input, textarea, select');
            inputs.forEach(input => {
                let key = input.id || input.name;
@@ -47,27 +51,32 @@ function startSync() {
         }
     });
 
-    // 2. BỘ NÃO TỰ ĐỘNG: Bất kể bạn bấm vào nút "Ghi nhận" nào, cứ có nút bấm là tự lưu lên mạng!
-    document.addEventListener('click', function(e) {
-        // Nếu bấm vào bất kỳ nút bấm hoặc thẻ liên kết nào trên trang web
-        if (e.target.closest('button') || e.target.closest('a')) {
-            setTimeout(() => {
-                let dataToSave = {};
-                const inputs = document.querySelectorAll('input, textarea, select');
-                
-                inputs.forEach(input => {
-                    let key = input.id || input.name;
-                    if (key) {
-                        dataToSave[key] = input.type === 'checkbox' ? input.checked : input.value;
-                    }
-                });
-                
-                // Đẩy toàn bộ các ô nhập liệu lên mạng cùng một lúc
-                database.ref('dulieu_nhatky/').update(dataToSave);
-                console.log("Đã tự động lưu dữ liệu sau khi bấm nút!");
-            }, 200); // Đợi giao diện xử lý xong rồi lưu ngầm lên mạng
-        }
+    // Theo dõi khi người dùng bắt đầu gõ chữ
+    document.addEventListener('input', function() {
+        isTyping = true;
     });
+
+    // 2. BỘ NÃO TỰ ĐỘNG LƯU: Cứ sau mỗi 2 giây là tự động quét 10 ô nhập liệu quăng lên mạng!
+    setInterval(() => {
+        if (isTyping) {
+            let dataToSave = {};
+            const inputs = document.querySelectorAll('input, textarea, select');
+            
+            inputs.forEach(input => {
+                let key = input.id || input.name;
+                if (key) {
+                    dataToSave[key] = input.type === 'checkbox' ? input.checked : input.value;
+                }
+            });
+            
+            database.ref('dulieu_nhatky/').update(dataToSave, (error) => {
+                if (!error) {
+                    isTyping = false; // Lưu thành công
+                    console.log("Hệ thống đã tự động lưu dữ liệu lên đám mây!");
+                }
+            });
+        }
+    }, 2000); // 2 giây quét 1 lần
 }
 
 window.addEventListener('DOMContentLoaded', loadFirebase);
