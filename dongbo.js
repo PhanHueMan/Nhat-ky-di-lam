@@ -14,7 +14,6 @@ function loadFirebase() {
 }
 
 function startSync() {
-    // Sử dụng đúng thông số cấu hình từ hình ảnh Firebase của bạn
     const firebaseConfig = {
         apiKey: "AIzaSyD8zsFJMsqNpCu491-GAzByQ8dqTZBqHew",
         authDomain: "://firebaseapp.com",
@@ -30,33 +29,39 @@ function startSync() {
     const database = firebase.database();
     let isTyping = false;
 
-    // 1. TỰ ĐỘNG TẢI DỮ LIỆU VỀ: Lắng nghe mạng và điền vào các ô id trên màn hình
-    database.ref('dulieu_nhatky/').on('value', (snapshot) => {
-        if (isTyping) return; // Nếu đang gõ thì tạm thời không đè dữ liệu về
+    // Hàm thực hiện đổ dữ liệu từ mạng đè lên màn hình
+    function forceFillData() {
+        database.ref('dulieu_nhatky/').once('value').then((snapshot) => {
+            const data = snapshot.val();
+            if (data && !isTyping) {
+                const inputs = document.querySelectorAll('input, textarea, select');
+                inputs.forEach(input => {
+                    let key = input.id || input.name;
+                    if(key && data[key] !== undefined) {
+                        if (input.type === 'checkbox') {
+                            input.checked = data[key];
+                        } else {
+                            input.value = data[key];
+                        }
+                    }
+                });
+            }
+        });
+    }
 
-        const data = snapshot.val();
-        if (data) {
-           console.log("Đã cập nhật dữ liệu mới từ đám mây!");
-           const inputs = document.querySelectorAll('input, textarea, select');
-           inputs.forEach(input => {
-               let key = input.id || input.name;
-               if(key && data[key] !== undefined) {
-                   if (input.type === 'checkbox') {
-                       input.checked = data[key];
-                   } else {
-                       input.value = data[key];
-                   }
-               }
-           });
+    // 1. ÉP TẢI DỮ LIỆU LIÊN TỤC: Cứ 1 giây là ép dữ liệu mạng hiển thị ra màn hình, chống lệnh xóa cũ
+    setInterval(() => {
+        if (!isTyping) {
+            forceFillData();
         }
-    });
+    }, 1000);
 
-    // Theo dõi khi người dùng bắt đầu gõ chữ
+    // Theo dõi khi người dùng bắt đầu gõ chữ thì tạm dừng ép dữ liệu về để không bị khựng
     document.addEventListener('input', function() {
         isTyping = true;
     });
 
-    // 2. BỘ NÃO TỰ ĐỘNG LƯU: Cứ sau mỗi 2 giây là tự động quét 10 ô nhập liệu quăng lên mạng!
+    // 2. TỰ ĐỘNG LƯU: Cứ sau mỗi 2 giây là tự động quét 10 ô nhập liệu quăng lên mạng
     setInterval(() => {
         if (isTyping) {
             let dataToSave = {};
@@ -71,12 +76,12 @@ function startSync() {
             
             database.ref('dulieu_nhatky/').update(dataToSave, (error) => {
                 if (!error) {
-                    isTyping = false; // Lưu thành công
-                    console.log("Hệ thống đã tự động lưu dữ liệu lên đám mây!");
+                    isTyping = false;
+                    console.log("Đã tự động lưu dữ liệu lên đám mây!");
                 }
             });
         }
-    }, 2000); // 2 giây quét 1 lần
+    }, 2000);
 }
 
 window.addEventListener('DOMContentLoaded', loadFirebase);
