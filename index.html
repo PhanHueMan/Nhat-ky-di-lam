@@ -1,14 +1,20 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
- <script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-app.js";
-  import {
+<script>
+window.firebaseReady = (async () => {
+  const { initializeApp } = await import(
+    "https://www.gstatic.com/firebasejs/12.18.0/firebase-app.js"
+  );
+
+  const {
     getDatabase,
     ref,
     set,
     get
-  } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-database.js";
+  } = await import(
+    "https://www.gstatic.com/firebasejs/12.18.0/firebase-database.js"
+  );
 
   const firebaseConfig = {
     apiKey: "AIzaSyD8zsFJMsqNpCu491-GAzBYq8dqTZBqHew",
@@ -22,11 +28,12 @@
 
   const app = initializeApp(firebaseConfig);
   const db = getDatabase(app);
-  
-window.firebaseDB = db;
-window.firebaseRef = ref;
-window.firebaseSet = set;
-window.firebaseGet = get;
+
+  window.firebaseDB = db;
+  window.firebaseRef = ref;
+  window.firebaseSet = set;
+  window.firebaseGet = get;
+})();
 </script>
 <meta charset="UTF-8">
 <title>Nhật Ký Làm Việc Của Mẫn</title>
@@ -1759,9 +1766,14 @@ function initHeaderDate(){
   $('e-date').value = todayISO();
   const now = new Date();
   calYear = now.getFullYear(); calMonth = now.getMonth(); selectedDate = todayISO();
+  await window.firebaseReady;
   await loadAll();
-  console.log('Firebase loaded:', logs);
-  renderLots(); renderLogFeed(); renderCalendar(); renderCalDayDetail(); renderDoneLots();
+
+   renderLots();
+   renderLogFeed()
+   renderCalendar();
+   renderCalDayDetail();
+   renderDoneLots();
 })();
 </script>
 <a href="checklist-lo-hang.html" style="font-size: 20px; display: block; text-align: center; margin: 20px;">Bấm vào đây để xem trang nhật ký tiếp theo</a>
