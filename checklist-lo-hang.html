@@ -1,0 +1,1157 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Checklist Lô Hàng</title>
+<style>
+  :root{
+    --navy:#16233F;
+    --navy-2:#1D3059;
+    --accent:#C8592A;
+    --accent-bg:#F7E6DB;
+    --bg:#F3EFE6;
+    --card:#FFFFFF;
+    --line:#E4DFD1;
+    --ink:#20242E;
+    --ink-soft:#6B7280;
+    --ink-faint:#9CA3AF;
+    --done:#2F7D4F;
+    --done-bg:#E4F1E8;
+    --track:#EDE9DD;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:'Inter','Segoe UI',sans-serif;
+    background:var(--bg);
+    color:var(--ink);
+  }
+  .wrap{max-width:760px;margin:0 auto;padding:0 0 60px;}
+
+  header{
+    background:var(--navy);
+    color:#fff;
+    padding:28px 20px 26px;
+  }
+  header .eyebrow{
+    color:#E8996F;
+    font-size:12px;
+    font-weight:600;
+    letter-spacing:1.2px;
+    text-transform:uppercase;
+    margin-bottom:8px;
+  }
+  header h1{
+    margin:0 0 6px;
+    font-size:24px;
+    font-weight:700;
+  }
+  header .sub{
+    font-size:13px;
+    color:#B7C0D6;
+  }
+
+  .content{padding:0 16px;}
+
+  .add-card{
+    background:var(--card);
+    border-radius:12px;
+    box-shadow:0 6px 20px rgba(22,35,63,0.08);
+    padding:18px 18px 20px;
+    margin-top:-18px;
+    position:relative;
+    z-index:2;
+  }
+  .add-card .label{
+    font-size:11px;
+    font-weight:700;
+    letter-spacing:0.8px;
+    color:var(--ink-soft);
+    text-transform:uppercase;
+    margin-bottom:10px;
+  }
+  .add-row{display:flex;gap:8px;flex-wrap:wrap;}
+  .add-row input[type=text]{
+    flex:1;
+    min-width:160px;
+    padding:10px 12px;
+    border:1px solid var(--line);
+    background:#FAF8F2;
+    font-size:14px;
+    color:var(--ink);
+    border-radius:8px;
+    font-family:inherit;
+  }
+  .add-row input[type=text]:focus{outline:2px solid var(--accent);outline-offset:1px;}
+
+  .toggle-group{
+    display:flex;
+    border:1px solid var(--line);
+    border-radius:8px;
+    overflow:hidden;
+  }
+  .toggle-group button{
+    border:none;
+    background:#FAF8F2;
+    color:var(--ink-soft);
+    font-size:13px;
+    font-weight:600;
+    padding:0 16px;
+    cursor:pointer;
+  }
+  .toggle-group button.active{background:var(--navy);color:#fff;}
+
+  .btn-main{
+    background:var(--ink);
+    color:#fff;
+    border:none;
+    border-radius:8px;
+    padding:0 18px;
+    font-size:13px;
+    font-weight:600;
+    cursor:pointer;
+    white-space:nowrap;
+  }
+  .btn-main:hover{background:#000;}
+
+  .filters{
+    display:flex;
+    gap:8px;
+    margin:18px 0 20px;
+    flex-wrap:wrap;
+  }
+  .filter-pill{
+    border:1px solid var(--line);
+    background:var(--card);
+    color:var(--ink-soft);
+    font-size:13px;
+    font-weight:600;
+    padding:7px 14px;
+    border-radius:999px;
+    cursor:pointer;
+  }
+  .filter-pill.active{background:var(--navy);color:#fff;border-color:var(--navy);}
+
+  details.manage{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:12px 16px;
+    margin-bottom:20px;
+  }
+  details.manage summary{
+    cursor:pointer;
+    font-size:12px;
+    font-weight:700;
+    letter-spacing:0.5px;
+    text-transform:uppercase;
+    color:var(--ink-soft);
+  }
+  .manage-body{margin-top:12px;}
+  .manage-body .hint{font-size:12px;color:var(--ink-faint);margin-bottom:10px;line-height:1.5;}
+  .manage-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:8px;
+    margin-bottom:8px;
+  }
+  .manage-grid input[type=text]{
+    padding:8px 10px;
+    border:1px solid var(--line);
+    border-radius:6px;
+    font-size:13px;
+    font-family:inherit;
+  }
+  textarea{
+    width:100%;
+    min-height:80px;
+    padding:8px 10px;
+    border:1px solid var(--line);
+    border-radius:6px;
+    font-size:13px;
+    font-family:inherit;
+    resize:vertical;
+    margin-bottom:8px;
+  }
+  .existing-items{max-height:220px;overflow-y:auto;border-top:1px solid var(--line);margin-top:14px;padding-top:10px;}
+  .existing-group-title{font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.5px;margin:10px 0 4px;}
+  .existing-item-row{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    padding:5px 0;
+    font-size:12.5px;
+    border-bottom:1px solid #F1EEE3;
+  }
+  .existing-item-row span{flex:1;color:var(--ink-soft);}
+  .del-mini{
+    background:none;border:none;color:var(--ink-faint);cursor:pointer;font-size:14px;padding:2px 4px;
+  }
+  .del-mini:hover{color:var(--accent);}
+
+  .empty{
+    text-align:center;
+    padding:50px 20px;
+    color:var(--ink-soft);
+    border:1.5px dashed var(--line);
+    border-radius:10px;
+    font-size:14px;
+    background:var(--card);
+  }
+
+  .shipment{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:12px;
+    margin-bottom:16px;
+    overflow:hidden;
+  }
+  .shipment-head{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:14px 16px;
+  }
+  .type-badge{
+    font-size:11px;
+    font-weight:700;
+    letter-spacing:0.5px;
+    padding:4px 9px;
+    border-radius:6px;
+    flex-shrink:0;
+  }
+  .type-badge.import{background:var(--navy);color:#fff;}
+  .type-badge.export{background:var(--accent);color:#fff;}
+
+  .shipment-name{
+    font-weight:700;
+    font-size:14.5px;
+    flex:1;
+    background:transparent;
+    border:none;
+    color:var(--ink);
+    padding:2px 0;
+    min-width:0;
+  }
+  .shipment-name:focus{outline:1.5px solid var(--accent);border-radius:4px;}
+
+  .progress-num{
+    font-size:12.5px;
+    font-weight:600;
+    color:var(--ink-soft);
+    white-space:nowrap;
+  }
+  .progress-num.done{color:var(--done);}
+
+  .date-row{
+    display:flex;
+    gap:14px;
+    flex-wrap:wrap;
+    padding:0 16px 12px;
+    margin-top:-4px;
+  }
+  .date-field{display:flex;align-items:center;gap:6px;}
+  .date-field label{font-size:11.5px;color:var(--ink-soft);font-weight:600;white-space:nowrap;}
+  .date-field input[type=date]{
+    border:1px solid var(--line);
+    border-radius:6px;
+    padding:4px 6px;
+    font-size:12.5px;
+    font-family:inherit;
+    color:var(--ink);
+    background:#FAF8F2;
+  }
+  .date-field.is-done input[type=date]{
+    text-decoration:line-through;
+    color:var(--ink-faint);
+    background:var(--done-bg);
+  }
+  .date-field .done-toggle{
+    display:flex;
+    align-items:center;
+    gap:3px;
+    font-size:11px;
+    color:var(--ink-faint);
+    cursor:pointer;
+    white-space:nowrap;
+  }
+  .date-field .done-toggle input{
+    width:13px;height:13px;accent-color:var(--done);cursor:pointer;
+  }
+  .days-pill{
+    font-size:11px;
+    font-weight:700;
+    padding:3px 9px;
+    border-radius:999px;
+    white-space:nowrap;
+  }
+  .days-pill.overdue{background:var(--accent-bg);color:var(--accent);}
+  .days-pill.soon{background:#FDF0D8;color:#B0791A;}
+  .days-pill.normal{background:var(--done-bg);color:var(--done);}
+  .days-pill.today{background:var(--accent);color:#fff;}
+
+  .agenda{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:14px 16px;
+    margin-bottom:20px;
+  }
+  .agenda-title{
+    font-size:12px;
+    font-weight:700;
+    letter-spacing:0.5px;
+    text-transform:uppercase;
+    color:var(--ink-soft);
+    margin-bottom:10px;
+  }
+  .agenda-title-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    margin-bottom:2px;
+  }
+  .agenda-title-row .agenda-title{margin-bottom:0;}
+  .btn-ghost-sm{
+    background:transparent;
+    border:1px solid var(--line);
+    color:var(--ink-soft);
+    font-size:11px;
+    font-weight:600;
+    padding:5px 10px;
+    border-radius:6px;
+    cursor:pointer;
+    white-space:nowrap;
+  }
+  .btn-ghost-sm:hover{border-color:var(--accent);color:var(--accent);}
+  .agenda-empty{font-size:13px;color:var(--ink-faint);}
+  .agenda-row{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:8px 0;
+    border-bottom:1px solid #F1EEE3;
+  }
+  .agenda-row:last-child{border-bottom:none;}
+  .agenda-row:hover .agenda-name{color:var(--accent);}
+  .agenda-main{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    flex:1;
+    min-width:0;
+    cursor:pointer;
+    background:none;
+    border:none;
+    text-align:left;
+    padding:0;
+    font-family:inherit;
+  }
+  .agenda-cal-link{
+    font-size:11px;
+    color:var(--ink-faint);
+    text-decoration:none;
+    border:1px solid var(--line);
+    border-radius:6px;
+    padding:4px 8px;
+    white-space:nowrap;
+    flex-shrink:0;
+  }
+  .agenda-cal-link:hover{color:var(--accent);border-color:var(--accent);}
+  .agenda-date{
+    font-size:12px;
+    font-weight:700;
+    color:var(--ink);
+    min-width:52px;
+  }
+  .agenda-mid{flex:1;min-width:0;}
+  .agenda-name{font-size:13px;font-weight:600;color:var(--ink);}
+  .agenda-label{font-size:11.5px;color:var(--ink-soft);}
+
+  .icon-btn{
+    background:none;
+    border:none;
+    color:var(--ink-faint);
+    cursor:pointer;
+    font-size:16px;
+    padding:4px 6px;
+    border-radius:6px;
+    line-height:1;
+  }
+  .icon-btn:hover{background:#F1EEE3;color:var(--ink);}
+  .icon-btn.danger:hover{background:var(--accent-bg);color:var(--accent);}
+
+  .bar-track{height:5px;background:var(--track);}
+  .bar-fill{height:100%;background:var(--done);transition:width .25s ease;}
+
+  .checklist{padding:4px 16px 16px;display:none;}
+  .checklist.open{display:block;}
+  .section-title{
+    font-size:11px;
+    font-weight:700;
+    color:var(--accent);
+    text-transform:uppercase;
+    letter-spacing:0.6px;
+    margin:16px 0 8px;
+  }
+  .section-title:first-child{margin-top:14px;}
+  .subsection-title{
+    font-size:12px;
+    font-weight:600;
+    color:var(--ink-soft);
+    margin:10px 0 4px;
+  }
+  .check-row{
+    display:flex;
+    align-items:flex-start;
+    gap:9px;
+    padding:6px 0;
+  }
+  .check-row input[type=checkbox]{
+    margin-top:2px;
+    width:17px;
+    height:17px;
+    accent-color:var(--done);
+    flex-shrink:0;
+    cursor:pointer;
+  }
+  .check-row label{
+    flex:1;
+    font-size:13.5px;
+    line-height:1.45;
+    cursor:pointer;
+  }
+  .check-row.checked label{color:var(--ink-faint);text-decoration:line-through;}
+  .no-items{font-size:13px;color:var(--ink-faint);padding:10px 0;}
+
+  .note-section{
+    margin-top:18px;
+    padding-top:14px;
+    border-top:1.5px dashed var(--line);
+  }
+  .note-label{
+    font-size:11px;
+    font-weight:700;
+    color:var(--accent);
+    text-transform:uppercase;
+    letter-spacing:0.6px;
+    margin-bottom:6px;
+  }
+  .note-textarea{
+    width:100%;
+    min-height:56px;
+    border:1px solid var(--accent);
+    border-radius:8px;
+    padding:9px 11px;
+    font-family:inherit;
+    font-size:13.5px;
+    font-weight:600;
+    color:var(--accent);
+    background:var(--accent-bg);
+    resize:vertical;
+  }
+  .note-textarea::placeholder{color:#C99C7F;font-weight:500;}
+  .note-textarea:focus{outline:2px solid var(--accent);outline-offset:1px;}
+
+  .confirm-row{display:flex;align-items:center;gap:6px;font-size:12px;flex-shrink:0;}
+  .confirm-row span{color:var(--accent);white-space:nowrap;}
+  .confirm-row button{font-size:11px;padding:4px 8px;border-radius:6px;cursor:pointer;}
+  .confirm-yes{background:var(--accent);color:#fff;border:1px solid var(--accent);}
+  .confirm-no{background:transparent;border:1px solid var(--line);color:var(--ink-soft);}
+
+  @media(max-width:480px){
+    .manage-grid{grid-template-columns:1fr;}
+    .shipment-name{font-size:13.5px;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="eyebrow">NGUYÊN ĐĂNG - More than logistics - VẬN HÀNH LÔ HÀNG</div>
+    <h1>Checklist Lô Hàng</h1>
+    <div class="sub">Theo dõi tiến độ hàng nhập &amp; hàng xuất — tự động lưu</div>
+  </header>
+
+  <div class="content">
+    <div class="add-card">
+      <div class="label">Thêm lô hàng mới</div>
+      <div class="add-row">
+        <input type="text" id="newShipmentInput" placeholder="Mã lô hàng / tên khách...">
+        <div class="toggle-group" id="typeToggle">
+          <button type="button" class="active" data-type="import">Nhập</button>
+          <button type="button" data-type="export">Xuất</button>
+        </div>
+        <button class="btn-main" id="addShipmentBtn">+ Thêm</button>
+      </div>
+    </div>
+
+    <div class="filters" id="filters">
+      <button class="filter-pill active" data-filter="all">Tất cả</button>
+      <button class="filter-pill" data-filter="import">Hàng nhập</button>
+      <button class="filter-pill" data-filter="export">Hàng xuất</button>
+      <button class="filter-pill" data-filter="pending">Chưa xong</button>
+      <button class="filter-pill" data-filter="archived">Đã kết thúc</button>
+    </div>
+
+    <details class="manage" id="managePanel">
+      <summary>Quản lý danh sách đầu việc mẫu (<span id="itemCount">0</span>)</summary>
+      <div class="manage-body">
+        <div class="hint">
+          Đây là nơi thêm, sửa hoặc xóa các đầu việc mẫu (áp dụng cho mọi lô hàng cùng loại nhập/xuất). Chọn loại, điền tên mục lớn và bộ phận phụ trách, dán các dòng việc rồi bấm thêm.
+        </div>
+        <div class="manage-grid">
+          <input type="text" id="bulkType" placeholder="Loại: nhập hoặc xuất" value="nhập">
+          <input type="text" id="bulkSection" placeholder="Tên mục lớn, vd: Trước khi hàng đến VN">
+        </div>
+        <input type="text" id="bulkSubsection" placeholder="Tên bộ phận phụ trách, vd: Với agent" style="width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:6px;font-size:13px;margin-bottom:8px;font-family:inherit;">
+        <textarea id="bulkText" placeholder="Dán các đầu việc vào đây, mỗi dòng một việc..."></textarea>
+        <button class="btn-main" id="bulkAddBtn" style="height:36px;">Thêm các dòng trên</button>
+        <div class="existing-items" id="existingItems"></div>
+      </div>
+    </details>
+
+    <div class="agenda" id="agendaPanel">
+      <div class="agenda-title-row">
+        <div class="agenda-title">Lịch sắp tới (14 ngày tới)</div>
+        <button class="btn-ghost-sm" id="icsExportBtn" title="Tải file .ics chứa tất cả mốc chưa xong để nhập vào Google Calendar, Outlook hay Apple Calendar">Xuất lịch (.ics)</button>
+      </div>
+      <div id="agendaBody"></div>
+    </div>
+
+    <div id="shipmentList"></div>
+    <div class="empty" id="emptyState" style="display:none;">Chưa có lô hàng nào phù hợp bộ lọc.</div>
+  </div>
+
+</div>
+
+<script>
+const STORAGE_KEY = 'checklist-app-data-v3';
+
+const SEED_ITEMS = [
+  {type:'import', section:'Trước khi hàng đến VN', subsection:'Với agent', text:'Xin Draft Bill, update tàu chạy, báo khách'},
+  {type:'import', section:'Trước khi hàng đến VN', subsection:'Với agent', text:'Hàng cont thì xin max freetime DEM, DET cho khách (thường 7-14 ngày, được nhiều hơn càng tốt)'},
+  {type:'import', section:'Trước khi hàng đến VN', subsection:'Với agent', text:'Local đầu Dest (trừ trường hợp MBL qua thẳng 1 hãng tàu thì không cần xin, vì hãng tàu có tariff rõ ràng rồi; còn qua 1 bên coloader phát lệnh thì đều phải xin hết)'},
+  {type:'import', section:'Trước khi hàng đến VN', subsection:'Với khách', text:'Gửi khách Draft bill, yêu cầu khách xác nhận lại và chờ phản hồi'},
+  {type:'import', section:'Trước khi hàng đến VN', subsection:'Với khách', text:'Update tình hình tàu chạy'},
+  {type:'import', section:'Trước khi hàng đến VN', subsection:'Với hãng tàu, co loader', text:'Lấy phân quyền khai MNF trước tàu đến 24h'},
+  {type:'import', section:'Trước khi hàng đến VN', subsection:'Với hãng tàu, co loader', text:'Nhận AN, nếu tới ngày mà chưa nhận được phải hỏi'},
+  {type:'import', section:'Trước khi hàng đến VN', subsection:'Với hãng tàu, co loader', text:'Xin địa chỉ lấy cont, địa chỉ hạ cont'},
+  {type:'import', section:'Trước khi hàng đến VN', subsection:'Với hãng tàu, co loader', text:'Nhận Debit, gửi lên get tag kế toán Lệ; yêu cầu chuyển đại lý đối với hàng lẻ, lấy DO trên web hãng đối với hàng cont book trực tiếp qua hãng tàu, với Nvocc thì làm thanh toán rồi nhờ họ đưa DO khi tàu vào. Một số khách không phát hành EDO nếu khách chưa thanh toán cước'},
+  {type:'import', section:'Trước khi hàng đến VN', subsection:'Trách nhiệm với sales và cty', text:'Gửi chứng từ final lên Get, nếu là debit thì ghi rõ debit OF of agent, debit gia hạn of ai, debit Lcc của ai'},
+  {type:'import', section:'Trước khi hàng đến VN', subsection:'Trách nhiệm với sales và cty', text:'Tạo FMS'},
+  {type:'import', section:'Trước khi hàng đến VN', subsection:'Trách nhiệm với sales và cty', text:'Up MNF lên VNSW'},
+  {type:'import', section:'Trước khi hàng đến VN', subsection:'Trách nhiệm với sales và cty', text:'Gửi ảnh đã khai MNF lên get và cập nhật số Shipment'},
+  {type:'import', section:'Trước khi hàng đến VN', subsection:'Trách nhiệm với sales và cty', text:'Khai tờ khai nháp'},
+  {type:'import', section:'Ngay khi hàng đến VN', subsection:'Chung', text:'Hàng về TCS thì phải tách Bill, lấy DO, thanh toán phí tách bill và lao vụ, note lại cho anh Hoành trước khi gửi tờ khai để anh Hoành không phải mất phí chồng'},
+  {type:'import', section:'Ngay khi hàng đến VN', subsection:'Chung', text:'Truyền tờ khai chính thức (up chứng từ ở bước 2, hàng cont thì khai số cont)'},
+  {type:'import', section:'Ngay khi hàng đến VN', subsection:'Chung', text:'Up tất cả chứng từ lên Get'},
+  {type:'import', section:'Ngay khi hàng đến VN', subsection:'Chung', text:'Hàng về Cát Lái nhờ Ops bên Nhật Thực xử lý hồ sơ (gửi mail cho Ms.Donna, sau đó Cc mail kế toán cty)'},
+  {type:'import', section:'Ngay khi hàng đến VN', subsection:'Chung', text:'Hàng lẻ thì hỏi khách ewms có phải cập nhật giấy phép thỏa thuận với cảng không'},
+  {type:'import', section:'Ngay khi hàng đến VN', subsection:'Chung', text:'Hàng về sân bay liên hệ anh Hoành sân bay TSN, hoặc anh Hùng sân bay Nội Bài'},
+  {type:'import', section:'Ngay khi hàng đến VN', subsection:'Chung', text:'Hàng sân bay thì phải có giấy giới thiệu, nói khách chuẩn bị từ đầu. Kho TCS, khách nhập lần đầu phải có giấy phép đăng ký kinh doanh và văn bản cập nhật địa chỉ (nếu giấy phép đã cập nhật rồi thì khỏi)'},
+  {type:'import', section:'Ngay khi hàng đến VN', subsection:'Chung', text:'Làm biên bản bàn giao đưa anh Hải'},
+  {type:'import', section:'Ngay khi hàng đến VN', subsection:'Chung', text:'Hỏi anh Hải xe, nhờ anh Hải đặt trước'},
+  {type:'import', section:'Ngay khi hàng đến VN', subsection:'Chung', text:'Lấy tờ khai thông quan, lấy MV'},
+  {type:'import', section:'Ngay khi hàng đến VN', subsection:'Chung', text:'Up thông tin tờ khai lên FMS và Get'},
+  {type:'import', section:'Ngay khi hàng đến VN', subsection:'Chung', text:'Hàng lẻ làm phiếu xuất kho, hàng cont làm lệnh giao cont'},
+  {type:'import', section:'Ngay khi hàng đến VN', subsection:'Chung', text:'Cập nhật thông tin lấy hàng và thông tin tài xế cho khách'},
+
+  {type:'export', section:'Trước Cut off', subsection:'Chung', text:'Gửi booking cho khách'},
+  {type:'export', section:'Trước Cut off', subsection:'Chung', text:'Gần tới ngày xin thông tin đóng hàng'},
+  {type:'export', section:'Trước Cut off', subsection:'Chung', text:'Xin duyệt lệnh'},
+  {type:'export', section:'Trước Cut off', subsection:'Chung', text:'Nhắn khách xin SI, VGM sớm'},
+  {type:'export', section:'Trước Cut off', subsection:'Chung', text:'Hỏi khách hoặc sales về loại Bill khách muốn'},
+
+  {type:'export', section:'Cut off', subsection:'Chung', text:'Submit SI, VGM, nếu cần yêu cầu khách bổ sung thêm thông tin'},
+  {type:'export', section:'Cut off', subsection:'Chung', text:'Tạo FMS làm bill'},
+  {type:'export', section:'Cut off', subsection:'Chung', text:'Gửi bill nháp cho khách'},
+  {type:'export', section:'Cut off', subsection:'Chung', text:'Chỉnh sửa bill theo yêu cầu của khách'},
+  {type:'export', section:'Cut off', subsection:'Chung', text:'Nhờ khách xác nhận lại thông tin lần cuối'},
+  {type:'export', section:'Cut off', subsection:'Chung', text:'Note số Shipment ra cho sales cập nhật lên Get'},
+  {type:'export', section:'Cut off', subsection:'Chung', text:'Hỏi hãng về giấy ủy quyền và nộp LOI tùy vào loại bill mình yêu cầu'},
+  {type:'export', section:'Cut off', subsection:'Chung', text:'Nếu khách nào cần hold nghi ngờ thì dùng LOI short, tất cả còn lại dùng auto LONG'},
+
+  {type:'export', section:'Tàu chạy', subsection:'Chung', text:'Cập nhật ngày tàu chạy lên Get'},
+  {type:'export', section:'Tàu chạy', subsection:'Chung', text:'Xem lại FMS bill đã đúng chưa, phát hành HBL'},
+  {type:'export', section:'Tàu chạy', subsection:'Chung', text:'Email khách ngày tàu chạy'},
+  {type:'export', section:'Tàu chạy', subsection:'Chung', text:'Xem yêu cầu của hãng về giấy ủy quyền và nộp LOI tùy vào loại bill đã làm đủ chưa'},
+  {type:'export', section:'Tàu chạy', subsection:'Chung', text:'Nhờ khách cung cấp Giấy ủy quyền và LOI sớm để mình gửi hãng'},
+  {type:'export', section:'Tàu chạy', subsection:'Chung', text:'Hỏi khách có muốn auto release không (dùng cho bill sur và khách quen) thì xin hãng auto release cho khách'},
+  {type:'export', section:'Tàu chạy', subsection:'Chung', text:'Hỗ trợ khách các vấn đề phát sinh, email xin hãng'},
+  {type:'export', section:'Tàu chạy', subsection:'Chung', text:'Khách dùng bill gốc thì lên hãng lấy bill gốc về (đưa Bill cho khách, yêu cầu giấy giới thiệu khi khách đã thanh toán)'},
+  {type:'export', section:'Tàu chạy', subsection:'Chung', text:'Lấy Bill Sur về gửi khách khi khách đã thanh toán cho cty và kế toán đã thanh toán cho hãng (không thấy kế toán thanh toán thì nhắc kế toán)'}
+];
+
+let state = { items: [], shipments: [] };
+let expandedIds = new Set();
+let pendingDeleteId = null;
+let selectedType = 'import';
+let activeFilter = 'all';
+
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+
+function todayStr(){
+  const d = new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function dayDiff(value){
+  if(!value) return null;
+  const datePart = value.split('T')[0];
+  const a = new Date(datePart+'T00:00:00');
+  const b = new Date(todayStr()+'T00:00:00');
+  return Math.round((a-b)/86400000);
+}
+function pillClass(diff){
+  if(diff<0) return 'overdue';
+  if(diff===0) return 'today';
+  if(diff<=3) return 'soon';
+  return 'normal';
+}
+function pillLabel(diff){
+  if(diff<0) return 'Trễ '+Math.abs(diff)+' ngày';
+  if(diff===0) return 'Hôm nay';
+  return 'Còn '+diff+' ngày';
+}
+function formatVN(value){
+  if(!value) return '';
+  if(value.indexOf('T')>=0){
+    const parts = value.split('T');
+    const p = parts[0].split('-');
+    return p[2]+'/'+p[1]+' '+parts[1];
+  }
+  const p = value.split('-');
+  return p[2]+'/'+p[1];
+}
+function milestonesOf(shipment){
+  const d = shipment.dates || {};
+  const done = shipment.doneMilestones || {};
+  if(shipment.type==='import'){
+    return [ {key:'etd', label:'ETD', value:d.etd, done:!!done.etd, hasTime:false} ];
+  }
+  return [
+    {key:'cutoffSI', label:'Cut off SI', value:d.cutoffSI, done:!!done.cutoffSI, hasTime:true},
+    {key:'etd', label:'ETD', value:d.etd, done:!!done.etd, hasTime:false}
+  ];
+}
+function earliestDiff(shipment){
+  const diffs = milestonesOf(shipment).filter(m=>!m.done).map(m=>dayDiff(m.value)).filter(v=>v!==null);
+  if(diffs.length===0) return null;
+  return Math.min.apply(null, diffs);
+}
+function addDays(dateStr, n){
+  const d = new Date(dateStr+'T00:00:00');
+  d.setDate(d.getDate()+n);
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function toGcalStamp(dt){
+  return dt.getFullYear()+String(dt.getMonth()+1).padStart(2,'0')+String(dt.getDate()).padStart(2,'0')+'T'+String(dt.getHours()).padStart(2,'0')+String(dt.getMinutes()).padStart(2,'0')+'00';
+}
+function gcalLink(title, value){
+  if(value.indexOf('T')>=0){
+    const start = new Date(value+':00');
+    const end = new Date(start.getTime()+60*60000);
+    return 'https://calendar.google.com/calendar/render?action=TEMPLATE&text='+encodeURIComponent(title)+'&dates='+toGcalStamp(start)+'/'+toGcalStamp(end);
+  }
+  const start = value.replace(/-/g,'');
+  const end = addDays(value,1).replace(/-/g,'');
+  return 'https://calendar.google.com/calendar/render?action=TEMPLATE&text='+encodeURIComponent(title)+'&dates='+start+'/'+end;
+}
+function buildIcs(events){
+  const lines = ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//ChecklistLoHang//VN'];
+  events.forEach(function(e){
+    lines.push('BEGIN:VEVENT');
+    lines.push('UID:'+uid()+'@checklist-lo-hang');
+    if(e.date.indexOf('T')>=0){
+      const start = new Date(e.date+':00');
+      const end = new Date(start.getTime()+60*60000);
+      const fmt = function(dt){ return dt.getFullYear()+String(dt.getMonth()+1).padStart(2,'0')+String(dt.getDate()).padStart(2,'0')+'T'+String(dt.getHours()).padStart(2,'0')+String(dt.getMinutes()).padStart(2,'0')+'00'; };
+      lines.push('DTSTART:'+fmt(start));
+      lines.push('DTEND:'+fmt(end));
+    } else {
+      const dt = e.date.replace(/-/g,'');
+      const endDt = addDays(e.date,1).replace(/-/g,'');
+      lines.push('DTSTART;VALUE=DATE:'+dt);
+      lines.push('DTEND;VALUE=DATE:'+endDt);
+    }
+    lines.push('SUMMARY:'+e.title.replace(/\r?\n/g,' '));
+    lines.push('END:VEVENT');
+  });
+  lines.push('END:VCALENDAR');
+  return lines.join('\r\n');
+}
+function downloadIcs(content, filename){
+  const blob = new Blob([content], {type:'text/calendar'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+
+async function loadState(){
+  try{
+    const res = await window.storage.get(STORAGE_KEY, false);
+    if(res && res.value){
+      state = JSON.parse(res.value);
+      if(!Array.isArray(state.items)) state.items = [];
+      if(!Array.isArray(state.shipments)) state.shipments = [];
+    } else {
+      state = { items: SEED_ITEMS.map(it=>({id:uid(),...it})), shipments: [] };
+      await saveState();
+    }
+  }catch(e){
+    state = { items: SEED_ITEMS.map(it=>({id:uid(),...it})), shipments: [] };
+  }
+  render();
+}
+
+async function saveState(){
+  try{ await window.storage.set(STORAGE_KEY, JSON.stringify(state), false); }
+  catch(e){ console.error('Lưu dữ liệu thất bại', e); }
+}
+
+function itemsForType(type){
+  return state.items.filter(i=>i.type===type);
+}
+
+function groupItems(items){
+  const groups = [];
+  const map = new Map();
+  items.forEach(it=>{
+    const key = it.section+'|||'+it.subsection;
+    if(!map.has(key)){
+      const g = {section:it.section, subsection:it.subsection, items:[]};
+      map.set(key, g);
+      groups.push(g);
+    }
+    map.get(key).items.push(it);
+  });
+  return groups;
+}
+
+function render(){
+  renderManage();
+  renderAgenda();
+  renderShipments();
+}
+
+function gatherMilestones(withinDays, typeFilter){
+  const rows = [];
+  state.shipments.forEach(s=>{
+    if(s.archived) return;
+    if(typeFilter && s.type!==typeFilter) return;
+    milestonesOf(s).forEach(m=>{
+      if(!m.value || m.done) return;
+      const diff = dayDiff(m.value);
+      if(diff===null) return;
+      if(withinDays!==null && diff>withinDays) return;
+      rows.push({shipmentId:s.id, name:s.name, type:s.type, label:m.label, key:m.key, value:m.value, diff:diff});
+    });
+  });
+  rows.sort((a,b)=> a.diff - b.diff);
+  return rows;
+}
+
+function agendaTypeFilter(){
+  if(activeFilter==='import') return 'import';
+  if(activeFilter==='export') return 'export';
+  return null;
+}
+
+function renderAgenda(){
+  const body = document.getElementById('agendaBody');
+  body.innerHTML = '';
+
+  if(activeFilter==='archived'){
+    body.innerHTML = '<div class="agenda-empty">Đang xem các lô đã kết thúc — không cần theo dõi lịch nữa.</div>';
+    return;
+  }
+
+  const rows = gatherMilestones(14, agendaTypeFilter());
+  if(rows.length===0){
+    body.innerHTML = '<div class="agenda-empty">Chưa có mốc nào trong 14 ngày tới (hoặc các mốc đã được đánh dấu xong). Thêm ngày ETD / Cut off SI ở từng lô hàng bên dưới.</div>';
+    return;
+  }
+  rows.forEach(r=>{
+    const row = document.createElement('div');
+    row.className = 'agenda-row';
+
+    const main = document.createElement('button');
+    main.className = 'agenda-main';
+    main.type = 'button';
+    main.onclick = ()=>{
+      expandedIds.add(r.shipmentId);
+      render();
+      const el = document.getElementById('ship_'+r.shipmentId);
+      if(el) el.scrollIntoView({behavior:'smooth', block:'center'});
+    };
+    main.innerHTML = `
+      <span class="agenda-date">${formatVN(r.value)}</span>
+      <span class="type-badge ${r.type}" style="font-size:10px;padding:3px 7px;">${r.type==='import'?'Nhập':'Xuất'}</span>
+      <span class="agenda-mid">
+        <div class="agenda-name">${escapeHtml(r.name)}</div>
+        <div class="agenda-label">${r.label}</div>
+      </span>
+      <span class="days-pill ${pillClass(r.diff)}">${pillLabel(r.diff)}</span>
+    `;
+    row.appendChild(main);
+
+    const calLink = document.createElement('a');
+    calLink.className = 'agenda-cal-link';
+    calLink.href = gcalLink(r.name+' - '+r.label, r.value);
+    calLink.target = '_blank';
+    calLink.rel = 'noopener';
+    calLink.textContent = '+ Lịch';
+    calLink.title = 'Thêm sự kiện này vào Google Calendar';
+    row.appendChild(calLink);
+
+    body.appendChild(row);
+  });
+}
+
+function renderManage(){
+  document.getElementById('itemCount').textContent = state.items.length;
+  const box = document.getElementById('existingItems');
+  box.innerHTML = '';
+  ['import','export'].forEach(type=>{
+    const items = itemsForType(type);
+    if(items.length===0) return;
+    const groups = groupItems(items);
+    groups.forEach(g=>{
+      const title = document.createElement('div');
+      title.className = 'existing-group-title';
+      title.textContent = (type==='import'?'Nhập':'Xuất') + ' - ' + g.section + ' / ' + g.subsection;
+      box.appendChild(title);
+      g.items.forEach(it=>{
+        const row = document.createElement('div');
+        row.className = 'existing-item-row';
+        row.innerHTML = `<span>${escapeHtml(it.text)}</span>`;
+        const del = document.createElement('button');
+        del.className = 'del-mini';
+        del.textContent = '\u2715';
+        del.onclick = ()=>removeItem(it.id);
+        row.appendChild(del);
+        box.appendChild(row);
+      });
+    });
+  });
+}
+
+function removeItem(id){
+  state.items = state.items.filter(i=>i.id!==id);
+  state.shipments.forEach(s=>{ delete s.checks[id]; });
+  saveState();
+  render();
+}
+
+function renderShipments(){
+  const list = document.getElementById('shipmentList');
+  const empty = document.getElementById('emptyState');
+  list.innerHTML = '';
+
+  let shipments = state.shipments.slice();
+  if(activeFilter==='archived'){
+    shipments = shipments.filter(s=>s.archived);
+  } else {
+    shipments = shipments.filter(s=>!s.archived);
+    if(activeFilter==='import') shipments = shipments.filter(s=>s.type==='import');
+    else if(activeFilter==='export') shipments = shipments.filter(s=>s.type==='export');
+    else if(activeFilter==='pending') shipments = shipments.filter(s=>{
+      const items = itemsForType(s.type);
+      const doneCount = items.filter(it=>s.checks[it.id]).length;
+      return !(items.length>0 && doneCount===items.length);
+    });
+  }
+
+  shipments.sort((a,b)=>{
+    const da = earliestDiff(a), db = earliestDiff(b);
+    if(da===null && db===null) return 0;
+    if(da===null) return 1;
+    if(db===null) return -1;
+    return da - db;
+  });
+
+  if(shipments.length===0){
+    empty.style.display='block';
+    return;
+  }
+  empty.style.display='none';
+
+  shipments.forEach((shipment)=>{
+    const items = itemsForType(shipment.type);
+    const total = items.length;
+    const doneCount = items.filter(it=>shipment.checks[it.id]).length;
+    const pct = total>0 ? Math.round((doneCount/total)*100) : 0;
+    const isDone = total>0 && doneCount===total;
+    const isOpen = expandedIds.has(shipment.id);
+
+    const card = document.createElement('div');
+    card.className = 'shipment';
+    card.id = 'ship_'+shipment.id;
+
+    const head = document.createElement('div');
+    head.className = 'shipment-head';
+
+    const badge = document.createElement('span');
+    badge.className = 'type-badge ' + shipment.type;
+    badge.textContent = shipment.type==='import' ? 'Nhập' : 'Xuất';
+    head.appendChild(badge);
+
+    if(shipment.archived){
+      const archBadge = document.createElement('span');
+      archBadge.className = 'days-pill normal';
+      archBadge.textContent = 'Đã kết thúc';
+      head.appendChild(archBadge);
+    }
+
+    const nameInput = document.createElement('input');
+    nameInput.type = 'text';
+    nameInput.className = 'shipment-name';
+    nameInput.value = shipment.name;
+    nameInput.setAttribute('aria-label','Tên lô hàng');
+    nameInput.onchange = ()=>{ shipment.name = nameInput.value.trim() || 'Lô hàng chưa đặt tên'; saveState(); };
+    head.appendChild(nameInput);
+
+    const prog = document.createElement('span');
+    prog.className = 'progress-num' + (isDone ? ' done' : '');
+    prog.textContent = total>0 ? (doneCount+'/'+total) : '0 việc';
+    head.appendChild(prog);
+
+    if(!shipment.archived){
+      const eDiff = earliestDiff(shipment);
+      if(eDiff!==null){
+        const pill = document.createElement('span');
+        pill.className = 'days-pill ' + pillClass(eDiff);
+        pill.textContent = pillLabel(eDiff);
+        head.appendChild(pill);
+      }
+    }
+
+    const archiveBtn = document.createElement('button');
+    archiveBtn.className = 'icon-btn';
+    archiveBtn.textContent = shipment.archived ? '\u21BA' : '\u2713';
+    archiveBtn.title = shipment.archived ? 'Mở lại lô hàng này' : 'Đánh dấu lô hàng này đã kết thúc';
+    archiveBtn.setAttribute('aria-label', archiveBtn.title);
+    archiveBtn.onclick = ()=>{ shipment.archived = !shipment.archived; saveState(); render(); };
+    head.appendChild(archiveBtn);
+
+    const toggleBtn = document.createElement('button');
+    toggleBtn.className = 'icon-btn';
+    toggleBtn.setAttribute('aria-label','Mở rộng');
+    toggleBtn.textContent = isOpen ? '\u25B2' : '\u25BC';
+    toggleBtn.onclick = ()=>{
+      if(isOpen) expandedIds.delete(shipment.id); else expandedIds.add(shipment.id);
+      render();
+    };
+    head.appendChild(toggleBtn);
+
+    if(pendingDeleteId===shipment.id){
+      const confirmBox = document.createElement('div');
+      confirmBox.className = 'confirm-row';
+      confirmBox.innerHTML = '<span>Xóa?</span>';
+      const yesBtn = document.createElement('button');
+      yesBtn.className = 'confirm-yes';
+      yesBtn.textContent = 'Xóa';
+      yesBtn.onclick = ()=>deleteShipment(shipment.id);
+      const noBtn = document.createElement('button');
+      noBtn.className = 'confirm-no';
+      noBtn.textContent = 'Thôi';
+      noBtn.onclick = ()=>{ pendingDeleteId=null; render(); };
+      confirmBox.appendChild(yesBtn);
+      confirmBox.appendChild(noBtn);
+      head.appendChild(confirmBox);
+    } else {
+      const del = document.createElement('button');
+      del.className = 'icon-btn danger';
+      del.textContent = '\u2715';
+      del.setAttribute('aria-label','Xóa lô hàng');
+      del.onclick = ()=>{ pendingDeleteId = shipment.id; render(); };
+      head.appendChild(del);
+    }
+
+    card.appendChild(head);
+
+    if(!shipment.dates) shipment.dates = {};
+    if(!shipment.doneMilestones) shipment.doneMilestones = {};
+    const dateRow = document.createElement('div');
+    dateRow.className = 'date-row';
+    milestonesOf(shipment).forEach(m=>{
+      const field = document.createElement('div');
+      field.className = 'date-field' + (m.done ? ' is-done' : '');
+      const lbl = document.createElement('label');
+      lbl.textContent = m.label;
+      const inp = document.createElement('input');
+      inp.type = m.hasTime ? 'datetime-local' : 'date';
+      inp.value = m.value || '';
+      inp.disabled = m.done;
+      inp.onchange = ()=>{ shipment.dates[m.key] = inp.value; saveState(); render(); };
+      field.appendChild(lbl);
+      field.appendChild(inp);
+
+      const doneWrap = document.createElement('label');
+      doneWrap.className = 'done-toggle';
+      const doneCb = document.createElement('input');
+      doneCb.type = 'checkbox';
+      doneCb.checked = m.done;
+      doneCb.disabled = !m.value;
+      doneCb.onchange = ()=>{ shipment.doneMilestones[m.key] = doneCb.checked; saveState(); render(); };
+      doneWrap.appendChild(doneCb);
+      doneWrap.appendChild(document.createTextNode('Đã xong'));
+      field.appendChild(doneWrap);
+
+      dateRow.appendChild(field);
+    });
+    card.appendChild(dateRow);
+
+    const track = document.createElement('div');
+    track.className = 'bar-track';
+    const fill = document.createElement('div');
+    fill.className = 'bar-fill';
+    fill.style.width = pct + '%';
+    track.appendChild(fill);
+    card.appendChild(track);
+
+    const checklist = document.createElement('div');
+    checklist.className = 'checklist' + (isOpen ? ' open' : '');
+
+    if(total===0){
+      checklist.innerHTML = '<div class="no-items">Chưa có đầu việc mẫu cho loại này. Thêm ở mục "Quản lý danh sách đầu việc mẫu" phía trên.</div>';
+    } else {
+      const groups = groupItems(items);
+      groups.forEach(g=>{
+        const sTitle = document.createElement('div');
+        sTitle.className = 'section-title';
+        sTitle.textContent = g.section;
+        checklist.appendChild(sTitle);
+
+        const subTitle = document.createElement('div');
+        subTitle.className = 'subsection-title';
+        subTitle.textContent = g.subsection;
+        checklist.appendChild(subTitle);
+
+        g.items.forEach(item=>{
+          const checked = !!shipment.checks[item.id];
+          const row = document.createElement('div');
+          row.className = 'check-row' + (checked ? ' checked' : '');
+          const cbId = 'cb_'+shipment.id+'_'+item.id;
+
+          const cb = document.createElement('input');
+          cb.type = 'checkbox';
+          cb.id = cbId;
+          cb.checked = checked;
+          cb.onchange = ()=>{ shipment.checks[item.id]=cb.checked; saveState(); render(); };
+
+          const label = document.createElement('label');
+          label.setAttribute('for', cbId);
+          label.textContent = item.text;
+
+          row.appendChild(cb);
+          row.appendChild(label);
+          checklist.appendChild(row);
+        });
+      });
+    }
+
+    const noteSection = document.createElement('div');
+    noteSection.className = 'note-section';
+    const noteLabel = document.createElement('div');
+    noteLabel.className = 'note-label';
+    noteLabel.textContent = 'Ghi chú đặc biệt';
+    const noteArea = document.createElement('textarea');
+    noteArea.className = 'note-textarea';
+    noteArea.placeholder = 'Lưu ý riêng cho lô hàng này...';
+    noteArea.value = shipment.note || '';
+    noteArea.onchange = ()=>{ shipment.note = noteArea.value; saveState(); };
+    noteSection.appendChild(noteLabel);
+    noteSection.appendChild(noteArea);
+    checklist.appendChild(noteSection);
+
+    card.appendChild(checklist);
+    list.appendChild(card);
+  });
+}
+
+function deleteShipment(id){
+  state.shipments = state.shipments.filter(s=>s.id!==id);
+  pendingDeleteId = null;
+  saveState();
+  render();
+}
+
+function escapeHtml(str){
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}
+
+document.getElementById('typeToggle').addEventListener('click', function(e){
+  const btn = e.target.closest('button');
+  if(!btn) return;
+  selectedType = btn.dataset.type;
+  document.querySelectorAll('#typeToggle button').forEach(function(b){ b.classList.toggle('active', b===btn); });
+});
+
+document.getElementById('addShipmentBtn').onclick = function(){
+  const input = document.getElementById('newShipmentInput');
+  const name = input.value.trim();
+  if(!name) return;
+  const checks = {};
+  itemsForType(selectedType).forEach(function(it){ checks[it.id]=false; });
+  const newId = uid();
+  state.shipments.unshift({ id:newId, name:name, type:selectedType, checks:checks, dates:{} });
+  expandedIds.add(newId);
+  input.value='';
+  saveState();
+  render();
+};
+document.getElementById('newShipmentInput').addEventListener('keydown', function(e){
+  if(e.key==='Enter') document.getElementById('addShipmentBtn').click();
+});
+
+document.getElementById('filters').addEventListener('click', function(e){
+  const btn = e.target.closest('.filter-pill');
+  if(!btn) return;
+  activeFilter = btn.dataset.filter;
+  document.querySelectorAll('.filter-pill').forEach(function(b){ b.classList.toggle('active', b===btn); });
+  render();
+});
+
+document.getElementById('bulkAddBtn').onclick = function(){
+  const typeRaw = document.getElementById('bulkType').value.trim().toLowerCase();
+  const type = (typeRaw.indexOf('xuat')>=0 || typeRaw.indexOf('xuất')>=0) ? 'export' : 'import';
+  const section = document.getElementById('bulkSection').value.trim() || 'Chưa phân loại';
+  const subsection = document.getElementById('bulkSubsection').value.trim() || 'Chung';
+  const lines = document.getElementById('bulkText').value.split('\n').map(function(l){return l.trim();}).filter(Boolean);
+  if(lines.length===0) return;
+  const newItems = lines.map(function(text){ return {id:uid(), type:type, section:section, subsection:subsection, text:text}; });
+  state.items.push.apply(state.items, newItems);
+  state.shipments.forEach(function(s){
+    if(s.type===type){ newItems.forEach(function(it){ s.checks[it.id]=false; }); }
+  });
+  document.getElementById('bulkText').value='';
+  saveState();
+  render();
+};
+
+document.getElementById('icsExportBtn').onclick = function(){
+  const rows = gatherMilestones(null, agendaTypeFilter());
+  if(rows.length===0){
+    alert('Chưa có mốc ngày nào (chưa xong) để xuất.');
+    return;
+  }
+  const events = rows.map(function(r){ return {date:r.value, title:r.name+' - '+r.label}; });
+  downloadIcs(buildIcs(events), 'lich-lo-hang.ics');
+};
+
+loadState();
+</script>
+<a href="index.html" style="font-size: 20px; display: block; text-align: center; margin: 20px;">← Quay lại Trang Chủ</a>
+</body>
+</html>
