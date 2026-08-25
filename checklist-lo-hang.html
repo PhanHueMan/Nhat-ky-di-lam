@@ -726,9 +726,28 @@ function downloadIcs(content, filename){
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 }
+  
+async function waitForFirebase(){
+  for(let i = 0; i < 100; i++){
+    if(
+      window.firebaseDB &&
+      window.firebaseRef &&
+      window.firebaseGet &&
+      window.firebaseSet
+    ){
+      return;
+    }
 
+    await new Promise(resolve => setTimeout(resolve, 50));
+  }
+
+  throw new Error('Firebase chưa sẵn sàng');
+}
+  
 async function loadState(){
   try {
+    await waitForFirebase();
+    
     const snapshot = await window.firebaseGet(
       window.firebaseRef(window.firebaseDB, 'checklist')
     );
