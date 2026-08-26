@@ -1,0 +1,30 @@
+name: Restore checklist home button
+on:
+  push:
+    paths: ['.github/workflows/restore-home-button.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Restore button
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          p=Path('checklist-lo-hang.html')
+          s=p.read_text(encoding='utf-8')
+          b='''<div style="display:flex;justify-content:center;margin:28px 16px 36px;"><a href="index.html" style="display:inline-flex;align-items:center;gap:8px;padding:10px 18px;border-radius:8px;background:#16233F;color:#fff;text-decoration:none;font-family:Inter,'Segoe UI',sans-serif;font-size:13px;font-weight:700;box-shadow:0 4px 12px rgba(22,35,63,.15);">← Quay lại Trang Chủ</a></div>'''
+          pat=re.compile(r'<a\s+href=["\']index\.html["\'][^>]*>\s*←\s*Quay lại Trang Chủ\s*</a>',re.I)
+          s=pat.sub(b,s,count=1) if pat.search(s) else s.replace('</body>',b+'\n</body>',1)
+          p.write_text(s,encoding='utf-8')
+          PY
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add checklist-lo-hang.html
+          git diff --cached --quiet || (git commit -m "Restore styled home button" && git push)
