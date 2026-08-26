@@ -200,5 +200,6 @@ document.getElementById('filters').addEventListener('click',function(e){const bt
 document.getElementById('bulkAddBtn').onclick=function(){const rawType=document.getElementById('bulkType').value.trim().toLowerCase(),type=rawType.includes('xuất')||rawType.includes('export')?'export':'import',section=document.getElementById('bulkSection').value.trim()||'Khác',subsection=document.getElementById('bulkSubsection').value.trim()||'Chung',text=document.getElementById('bulkText').value.trim();if(!text){alert('Dán ít nhất một đầu việc.');return;}const lines=text.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);const newItems=lines.map(text=>({id:uid(),type,section,subsection,text,journalKeys:journalKeysForTask(text)}));state.items.push(...newItems);saveState();render();document.getElementById('bulkText').value='';};
 loadState();
 </script>
+<div style="display:flex;justify-content:center;margin:28px 16px 36px;"><a href="index.html" style="display:inline-flex;align-items:center;gap:8px;padding:10px 18px;border-radius:8px;background:#16233F;color:#fff;text-decoration:none;font-family:Inter,'Segoe UI',sans-serif;font-size:13px;font-weight:700;box-shadow:0 4px 12px rgba(22,35,63,.15);">← Quay lại Trang Chủ</a></div>
 </body>
 </html>
