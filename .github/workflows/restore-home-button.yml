@@ -10,47 +10,22 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Fix checklist labels
+      - name: Fix agenda customer label
         run: |
           python - <<'PY'
           from pathlib import Path
-          p=Path('checklist-lo-hang.html')
-          s=p.read_text(encoding='utf-8')
-
-          helper = r'''
-function shipmentDisplayName(shipment){
-  const customer = String(shipment.customer || '').trim();
-  const code = String(shipment.code || '').trim();
-  const name = String(shipment.name || '').trim();
-  if(customer && code) return customer + ' — ' + code;
-  return customer || code || name || 'Lô hàng chưa đặt tên';
-}
-'''.strip()
-
-          if 'function shipmentDisplayName(shipment)' not in s:
-            marker='function itemsForType(type){'
-            if marker not in s: raise SystemExit('display helper marker missing')
-            s=s.replace(marker,helper+'\n\n'+marker,1)
-
-          old="rows.push({shipmentId:s.id, name:s.name, type:s.type, label:m.label, key:m.key, value:m.value, diff:diff});"
-          new="rows.push({shipmentId:s.id, name:shipmentDisplayName(s), type:s.type, label:m.label, key:m.key, value:m.value, diff:diff});"
-          if old in s:
-            s=s.replace(old,new,1)
-
-          old2="nameInput.value = shipment.name;"
-          new2="nameInput.value = shipmentDisplayName(shipment);"
-          if old2 in s:
-            s=s.replace(old2,new2,1)
-
-          old3="nameInput.onchange = ()=>{ shipment.name = nameInput.value.trim() || 'Lô hàng chưa đặt tên'; saveState(); };"
-          new3="nameInput.onchange = ()=>{ shipment.name = nameInput.value.trim() || 'Lô hàng chưa đặt tên'; saveState(); };"
-          # Keep the existing edit behavior; only the displayed value is fixed.
-
-          p.write_text(s,encoding='utf-8')
+          p = Path('checklist-lo-hang.html')
+          s = p.read_text(encoding='utf-8')
+          old = "rows.push({shipmentId:s.id, name:s.name, type:s.type, label:m.label, key:m.key, value:m.value, diff:diff});"
+          new = "rows.push({shipmentId:s.id, name:(String(s.customer||'').trim() && String(s.code||'').trim() ? String(s.customer).trim()+' — '+String(s.code).trim() : (String(s.customer||'').trim() || String(s.code||'').trim() || String(s.name||'').trim() || 'Lô hàng chưa đặt tên')), type:s.type, label:m.label, key:m.key, value:m.value, diff:diff});"
+          if old not in s:
+              raise SystemExit('agenda row marker not found')
+          s = s.replace(old, new, 1)
+          p.write_text(s, encoding='utf-8')
           PY
       - name: Commit
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add checklist-lo-hang.html
-          git diff --cached --quiet || (git commit -m "Fix missing customer names in upcoming schedule" && git push)
+          git diff --cached --quiet || (git commit -m "Fix agenda customer label" && git push)
