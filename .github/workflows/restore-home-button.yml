@@ -10,16 +10,129 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Restore button
+      - name: Restore button and checklist journal sync
         run: |
           python - <<'PY'
           from pathlib import Path
           import re
+
           p=Path('checklist-lo-hang.html')
           s=p.read_text(encoding='utf-8')
+
+          # Keep the styled home button.
           b='''<div style="display:flex;justify-content:center;margin:28px 16px 36px;"><a href="index.html" style="display:inline-flex;align-items:center;gap:8px;padding:10px 18px;border-radius:8px;background:#16233F;color:#fff;text-decoration:none;font-family:Inter,'Segoe UI',sans-serif;font-size:13px;font-weight:700;box-shadow:0 4px 12px rgba(22,35,63,.15);">← Quay lại Trang Chủ</a></div>'''
           pat=re.compile(r'<a\s+href=["\']index\.html["\'][^>]*>\s*←\s*Quay lại Trang Chủ\s*</a>',re.I)
           s=pat.sub(b,s,count=1) if pat.search(s) else s.replace('</body>',b+'\n</body>',1)
+
+          mapping = r'''
+          function journalKeysForTask(text){
+            const t = String(text||'').trim().toLowerCase();
+            const keys = [];
+            if(t === 'tạo an cho khách' || t.startsWith('tạo an ') || t.startsWith('phát hành an')) keys.push('AN');
+            if(t === 'up mnf lên vnsw' || t.includes('khai mnf') || t.includes('up mnf')) keys.push('MNF');
+            if(t === 'khai tờ khai nháp' || t.includes('tờ khai nháp')) keys.push('Khai nháp TK');
+            if(t.startsWith('truyền tờ khai chính thức')) keys.push('Tờ khai');
+            if(t.includes('lấy tờ khai thông quan')) keys.push('Lấy TK thông quan');
+            if(t.includes('lấy tờ khai thông quan') && t.includes('lấy mv')) keys.push('Lấy MV');
+            if(t.startsWith('phát hành edo') || t.includes('phát hành edo / đưa edo cho khách')) keys.push('EDO');
+            if(t.startsWith('submit si')) keys.push('SI');
+            if(t.startsWith('submit si') && /\bvgm\b/.test(t)) keys.push('VGM');
+            if(t.startsWith('chỉnh sửa bill')) keys.push('Bill draft');
+            if(t.startsWith('xem lại fms bill đã đúng chưa, phát hành hbl') || t.includes('phát hành hbl')) keys.push('Bill (final)');
+            if(t.startsWith('lấy bill sur về gửi khách') || t.includes('bill sur')) keys.push('Bill Sur');
+            return [...new Set(keys)];
+          }
+          function taskJournalKeys(item){
+            return Array.isArray(item.journalKeys) ? item.journalKeys : journalKeysForTask(item.text);
+          }
+          '''
+          mapping = '\n'.join(line[10:] if line.startswith('          ') else line for line in mapping.splitlines()).strip()
+
+          if 'function journalKeysForTask(text)' not in s:
+            marker='];\n\nlet state = { items: [], shipments: [] };'
+            if marker not in s: raise SystemExit('mapping insertion marker missing')
+            s=s.replace(marker,'];\n\n'+mapping+'\n\nlet state = { items: [], shipments: [] };',1)
+
+          sync_func = r'''
+          async function recordJournalFromChecklist(shipment, keys, date){
+            try{
+              await waitForFirebase();
+              const snap=await window.firebaseGet(window.firebaseRef(window.firebaseDB,'/'));
+              const root=snap.val()||{};
+              let lots=Array.isArray(root.lots)?root.lots:Object.values(root.lots||{});
+              let entries=Array.isArray(root.entries)?root.entries:Object.values(root.entries||{});
+              const norm=v=>String(v||'').trim().toLowerCase();
+              const customer=shipment.customer||shipment.name||'';
+              const code=shipment.code||'';
+              const displayName=shipment.name||code||customer;
+              let lot=lots.find(l=>l&&l.id===shipment.journalLotId);
+              if(!lot){
+                lot=lots.find(l=>l&&(
+                  (code&&norm(l.code)===norm(code)) ||
+                  (customer&&norm(l.customer)===norm(customer)) ||
+                  (displayName&&(norm(l.code)===norm(displayName)||norm(l.customer)===norm(displayName)))
+                ));
+              }
+              if(!lot){
+                lot={id:uid(),customer:customer||displayName,code:code,type:shipment.lotType||(shipment.type==='export'?'Hàng xuất sea':'Hàng nhập sea'),date:date,doneFlag:false,doneDate:null};
+                lots.push(lot);
+              }
+              shipment.journalLotId=lot.id;
+              let entry=entries.find(e=>e&&e.lotId===lot.id&&e.date===date);
+              if(!entry){entry={id:uid(),date,lotId:lot.id,steps:[],recruit:[],mktItems:[],note:'',otherTasks:[]};entries.push(entry);}
+              entry.steps=Array.isArray(entry.steps)?entry.steps:[];
+              keys.forEach(k=>{
+                const idx=entry.steps.findIndex(x=>x&&x.label===k);
+                if(idx>=0) entry.steps[idx].qty=(Number(entry.steps[idx].qty)||0)+1;
+                else entry.steps.push({label:k,qty:1});
+              });
+              await window.firebaseSet(window.firebaseRef(window.firebaseDB,'lots'),lots);
+              await window.firebaseSet(window.firebaseRef(window.firebaseDB,'entries'),entries);
+              return true;
+            }catch(e){console.error('Checklist → Nhật ký error:',e);alert('Không đồng bộ được sang Nhật ký. Checklist vẫn được giữ.');return false;}
+          }
+          '''
+          sync_func='\n'.join(line[10:] if line.startswith('          ') else line for line in sync_func.splitlines()).strip()
+
+          if 'async function recordJournalFromChecklist' not in s:
+            marker='\nfunction deleteShipment(id){'
+            if marker not in s: raise SystemExit('sync insertion marker missing')
+            s=s.replace(marker,'\n'+sync_func+'\n\nfunction deleteShipment(id){',1)
+
+          old_cb="cb.onchange = ()=>{ shipment.checks[item.id]=cb.checked; saveState(); render(); };"
+          new_cb=r'''cb.onchange = async ()=>{
+            if(cb.checked && !checked){
+              shipment.checks[item.id]=true;
+              const keys=taskJournalKeys(item);
+              if(keys.length) await recordJournalFromChecklist(shipment,keys,todayStr());
+            } else {
+              shipment.checks[item.id]=cb.checked;
+            }
+            await saveState();
+            render();
+          };'''
+          if old_cb in s:
+            s=s.replace(old_cb,new_cb,1)
+
+          old_label="label.textContent = item.text;\n\n          row.appendChild(cb);"
+          new_label="""label.textContent = item.text;
+          const journalKeys = taskJournalKeys(item);
+          if(journalKeys.length){
+            const mark=document.createElement('span');
+            mark.style.cssText='font-size:11px;color:var(--done);font-weight:700;margin-left:7px;text-decoration:none;';
+            mark.textContent='→ Nhật ký: '+journalKeys.join(' + ');
+            label.appendChild(mark);
+          }
+
+          row.appendChild(cb);"""
+          if old_label in s:
+            s=s.replace(old_label,new_label,1)
+
+          old_bulk="const newItems = lines.map(function(text){ return {id:uid(), type:type, section:section, subsection:subsection, text:text}; });"
+          new_bulk="const newItems = lines.map(function(text){ return {id:uid(), type:type, section:section, subsection:subsection, text:text, journalKeys:journalKeysForTask(text)}; });"
+          if old_bulk in s:
+            s=s.replace(old_bulk,new_bulk,1)
+
           p.write_text(s,encoding='utf-8')
           PY
       - name: Commit
@@ -27,4 +140,4 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add checklist-lo-hang.html
-          git diff --cached --quiet || (git commit -m "Restore styled home button" && git push)
+          git diff --cached --quiet || (git commit -m "Restore checklist journal sync" && git push)
