@@ -355,8 +355,8 @@ textarea{width:100%;padding:10px;border:1.5px solid var(--line);border-radius:6p
 .next-page-link-wrap a{display:inline-flex;align-items:center;gap:8px;padding:11px 19px;border-radius:8px;background:#16233F;color:#fff;text-decoration:none;font-size:14px;font-weight:700;transition:transform .1s, box-shadow .15s;}
 .next-page-link-wrap a:hover{transform:translateY(-2px);box-shadow:0 8px 16px rgba(22,35,63,0.25);}
 .insight-row{display:flex;gap:24px;flex-wrap:wrap;align-items:stretch;}
-.insight-row .pie-chart-wrap{flex:1;min-width:240px;}
-.mountain-chart-wrap{flex:1;min-width:240px;}
+.insight-row .pie-chart-wrap{flex:0 0 auto;width:300px;}
+.mountain-chart-wrap{flex:1 1 460px;min-width:280px;}
 .mountain-svg{width:100%;height:auto;display:block;}
  
 @media(max-width:640px){
@@ -1601,22 +1601,33 @@ function renderComparisonChart(periodLogs){
     labels.forEach(l=>{ if(raw[l]>0) data[l]=raw[l]; });
   } else if(summaryMode==='month'){
     title = 'Năng suất công việc';
+    const [y,m] = currentPeriod.split('-').map(Number);
+    const lastDay = new Date(y, m, 0).getDate();
+    const today = todayISO();
+    const isCurrentMonth = currentPeriod === today.slice(0,7);
+    const endDay = isCurrentMonth ? Number(today.slice(8,10)) : lastDay;
     const raw = {};
-    periodLogs.slice().sort((a,b)=>a.date.localeCompare(b.date)).forEach(e=>{
-      const label = 'Tuần '+weekKey(e.date).split('-W')[1];
-      raw[label] = (raw[label]||0) + entryWorkload(e);
-    });
+    periodLogs.forEach(e=>{ raw[e.date] = (raw[e.date]||0) + entryWorkload(e); });
     data = {};
-    Object.entries(raw).forEach(([l,v])=>{ if(v>0) data[l]=v; });
+    for(let d=1; d<=endDay; d++){
+      const dateStr = `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+      const v = raw[dateStr]||0;
+      if(v>0) data[String(d).padStart(2,'0')] = v;
+    }
   } else {
     title = 'Biểu đồ năng suất';
+    const y = currentPeriod;
+    const today = todayISO();
+    const isCurrentYear = y === today.slice(0,4);
+    const endWeek = isCurrentYear ? getISOWeek(today).week : getISOWeek(`${y}-12-28`).week;
     const raw = {};
-    periodLogs.slice().sort((a,b)=>a.date.localeCompare(b.date)).forEach(e=>{
-      const label = periodLabel(e.date.slice(0,7), 'month', e.date);
-      raw[label] = (raw[label]||0) + entryWorkload(e);
-    });
+    periodLogs.forEach(e=>{ const wk = weekKey(e.date); raw[wk] = (raw[wk]||0) + entryWorkload(e); });
     data = {};
-    Object.entries(raw).forEach(([l,v])=>{ if(v>0) data[l]=v; });
+    for(let w=1; w<=endWeek; w++){
+      const wk = `${y}-W${String(w).padStart(2,'0')}`;
+      const v = raw[wk]||0;
+      if(v>0) data['Tuần '+w] = v;
+    }
   }
   $('compare-title').textContent = title;
   const entries = Object.entries(data);
@@ -1648,7 +1659,7 @@ function renderComparisonChart(periodLogs){
     </div>`;
 }
 function mountainChartSVG(entries){
-  const w = 340, h = 200, padLeft = 6, padRight = 32, padTop = 10, padBottom = 22;
+  const w = 620, h = 210, padLeft = 6, padRight = 32, padTop = 10, padBottom = 22;
   const values = entries.map(([,v])=>v);
   const rawMax = Math.max(...values, 1);
   const rawMin = Math.min(...values, 0);
@@ -1686,7 +1697,7 @@ function mountainChartSVG(entries){
   const showEvery = n > 9 ? Math.ceil(n/9) : 1;
   const axisLabels = points.map((p,i)=>{
     if(i % showEvery !== 0 && i !== n-1) return '';
-    const short = p.label.length>6 ? p.label.slice(0,6) : p.label;
+    const short = p.label.length>8 ? p.label.slice(0,8) : p.label;
     return `<text x="${p.x.toFixed(1)}" y="${h-6}" font-size="8" text-anchor="middle" fill="#726C5F">${escapeHtml(short)}</text>`;
   }).join('');
 
