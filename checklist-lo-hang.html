@@ -901,7 +901,7 @@ function gatherMilestones(withinDays, typeFilter){
       const diff = dayDiff(m.value);
       if(diff===null) return;
       if(withinDays!==null && diff>withinDays) return;
-      rows.push({shipmentId:s.id, name:s.name, type:s.type, label:m.label, key:m.key, value:m.value, diff:diff});
+      rows.push({shipmentId:s.id, name:(String(s.customer||'').trim() && String(s.code||'').trim() ? String(s.customer).trim()+' — '+String(s.code).trim() : (String(s.customer||'').trim() || String(s.code||'').trim() || String(s.name||'').trim() || 'Lô hàng chưa đặt tên')), type:s.type, label:m.label, key:m.key, value:m.value, diff:diff});
     });
   });
   rows.sort((a,b)=> a.diff - b.diff);
