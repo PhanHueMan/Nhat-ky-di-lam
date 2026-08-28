@@ -10,16 +10,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Fix agenda customer label
+      - name: Remove dash from agenda customer label
         run: |
           python - <<'PY'
           from pathlib import Path
           p = Path('checklist-lo-hang.html')
           s = p.read_text(encoding='utf-8')
-          old = "rows.push({shipmentId:s.id, name:s.name, type:s.type, label:m.label, key:m.key, value:m.value, diff:diff});"
-          new = "rows.push({shipmentId:s.id, name:(String(s.customer||'').trim() && String(s.code||'').trim() ? String(s.customer).trim()+' — '+String(s.code).trim() : (String(s.customer||'').trim() || String(s.code||'').trim() || String(s.name||'').trim() || 'Lô hàng chưa đặt tên')), type:s.type, label:m.label, key:m.key, value:m.value, diff:diff});"
+          old = "String(s.customer).trim()+' — '+String(s.code).trim()"
+          new = "String(s.customer).trim()+' '+String(s.code).trim()"
           if old not in s:
-              raise SystemExit('agenda row marker not found')
+              raise SystemExit('agenda separator marker not found')
           s = s.replace(old, new, 1)
           p.write_text(s, encoding='utf-8')
           PY
@@ -28,4 +28,4 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add checklist-lo-hang.html
-          git diff --cached --quiet || (git commit -m "Fix agenda customer label" && git push)
+          git diff --cached --quiet || (git commit -m "Remove dash from agenda customer label" && git push)
