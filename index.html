@@ -301,7 +301,7 @@ textarea{width:100%;padding:10px;border:1.5px solid var(--line);border-radius:6p
 #btn-toggle-periods{flex-shrink:0;}
 .pie-chart-wrap{display:flex;align-items:center;gap:24px;flex-wrap:wrap;}
 .pie-chart{width:150px;height:150px;border-radius:50%;flex-shrink:0;box-shadow:0 6px 18px rgba(32,36,46,0.22), inset 0 0 0 4px #fff;}
-.pie-legend{display:flex;flex-direction:column;gap:7px;flex:1;min-width:150px;}
+.pie-legend{display:flex;flex-direction:column;gap:7px;flex:1;min-width:110px;}
 .pie-legend-row{display:flex;align-items:center;gap:8px;font-size:13px;}
 .pie-swatch{width:13px;height:13px;border-radius:4px;flex-shrink:0;box-shadow:0 0 0 1px rgba(32,36,46,0.15);}
 .pie-legend-label{flex:1;}
@@ -355,7 +355,7 @@ textarea{width:100%;padding:10px;border:1.5px solid var(--line);border-radius:6p
 .next-page-link-wrap a{display:inline-flex;align-items:center;gap:8px;padding:11px 19px;border-radius:8px;background:#16233F;color:#fff;text-decoration:none;font-size:14px;font-weight:700;transition:transform .1s, box-shadow .15s;}
 .next-page-link-wrap a:hover{transform:translateY(-2px);box-shadow:0 8px 16px rgba(22,35,63,0.25);}
 .insight-row{display:flex;gap:24px;flex-wrap:wrap;align-items:stretch;}
-.insight-row .pie-chart-wrap{flex:0 0 auto;width:300px;}
+.insight-row .pie-chart-wrap{flex:0 0 auto;width:300px;flex-wrap:nowrap;gap:14px;}
 .mountain-chart-wrap{flex:1 1 460px;min-width:280px;}
 .mountain-svg{width:100%;height:auto;display:block;}
  
@@ -925,7 +925,14 @@ function renderLots(){
 }
  
 /* ---------- Lot modal ---------- */
-let doneAllCollapsed = false;
+const DONE_COLLAPSE_KEY = 'ndlog_done_collapsed_map';
+function loadDoneCollapsedMap(){
+  try{ return JSON.parse(localStorage.getItem(DONE_COLLAPSE_KEY)) || {}; }catch(e){ return {}; }
+}
+function saveDoneCollapsedMap(map){
+  try{ localStorage.setItem(DONE_COLLAPSE_KEY, JSON.stringify(map)); }catch(e){}
+}
+let doneCollapsedMap = loadDoneCollapsedMap();
 function renderDoneLots(){
   const list = $('done-list');
   if(!list) return;
@@ -936,7 +943,7 @@ function renderDoneLots(){
     return;
   }
   const sorted = [...doneLots].sort((a,b)=> (b.doneDate||b.date||'').localeCompare(a.doneDate||a.date||''));
-  list.innerHTML = sorted.map(l=>`<div class="done-card ${doneAllCollapsed?'collapsed':''}" data-id="${l.id}">
+  list.innerHTML = sorted.map(l=>`<div class="done-card ${doneCollapsedMap[l.id]?'collapsed':''}" data-id="${l.id}">
       <div class="done-card-top">
         <div>
           <span class="lot-customer">${escapeHtml(l.customer||'(chưa đặt tên)')}</span>
@@ -959,7 +966,12 @@ function renderDoneLots(){
     });
   });
   list.querySelectorAll('.done-card-top').forEach(top=>{
-    top.addEventListener('click', ()=> top.closest('.done-card').classList.toggle('collapsed'));
+    top.addEventListener('click', ()=>{
+      const card = top.closest('.done-card');
+      const collapsed = card.classList.toggle('collapsed');
+      doneCollapsedMap[card.dataset.id] = collapsed;
+      saveDoneCollapsedMap(doneCollapsedMap);
+    });
   });
   list.querySelectorAll('.done-revert').forEach(b=>{
     b.addEventListener('click', (e)=>{ e.stopPropagation(); revertLotToActive(b.dataset.id); });
@@ -974,9 +986,12 @@ function revertLotToActive(id){
   renderLots();
 }
 $('btn-toggle-done').addEventListener('click', ()=>{
-  doneAllCollapsed = !doneAllCollapsed;
-  $('btn-toggle-done').textContent = doneAllCollapsed ? 'Hiện tất cả' : 'Ẩn bớt tất cả';
-  $('done-list').querySelectorAll('.done-card').forEach(c=> c.classList.toggle('collapsed', doneAllCollapsed));
+  const doneLots = lots.filter(l=> l.doneFlag);
+  const nowCollapsed = !doneLots.every(l=> doneCollapsedMap[l.id]);
+  doneLots.forEach(l=>{ doneCollapsedMap[l.id] = nowCollapsed; });
+  saveDoneCollapsedMap(doneCollapsedMap);
+  $('btn-toggle-done').textContent = nowCollapsed ? 'Hiện tất cả' : 'Ẩn bớt tất cả';
+  $('done-list').querySelectorAll('.done-card').forEach(c=> c.classList.toggle('collapsed', nowCollapsed));
 });
 function openLotModal(id){
   currentLotId = id;
@@ -1659,7 +1674,7 @@ function renderComparisonChart(periodLogs){
     </div>`;
 }
 function mountainChartSVG(entries){
-  const w = 620, h = 210, padLeft = 6, padRight = 32, padTop = 10, padBottom = 22;
+  const w = 620, h = 210, padLeft = 6, padRight = 12, padTop = 10, padBottom = 22;
   const values = entries.map(([,v])=>v);
   const rawMax = Math.max(...values, 1);
   const rawMin = Math.min(...values, 0);
@@ -1672,15 +1687,6 @@ function mountainChartSVG(entries){
   const xFor = i => padLeft + (n>1 ? (i/(n-1))*innerW : innerW/2);
   const yFor = v => padTop + innerH * (1 - (v - yMin) / (yMax - yMin || 1));
   const points = entries.map(([label,v],i)=>({x:xFor(i), y:yFor(v), v, label}));
-
-  const gridCount = 5;
-  let grid = '', yLabels = '';
-  for(let g=0; g<=gridCount; g++){
-    const val = yMin + (yMax - yMin) * g / gridCount;
-    const y = yFor(val);
-    grid += `<line x1="${padLeft}" y1="${y.toFixed(1)}" x2="${w-padRight}" y2="${y.toFixed(1)}" stroke="#E5E1D8" stroke-width="1"/>`;
-    yLabels += `<text x="${(w-padRight+5).toFixed(1)}" y="${(y+3).toFixed(1)}" font-size="8.5" fill="#726C5F">${Math.round(val)}</text>`;
-  }
 
   let segments = '';
   for(let i=0; i<points.length-1; i++){
@@ -1702,10 +1708,8 @@ function mountainChartSVG(entries){
   }).join('');
 
   return `<svg viewBox="0 0 ${w} ${h}" class="mountain-svg" xmlns="http://www.w3.org/2000/svg">
-    ${grid}
     ${segments}
     ${dots}
-    ${yLabels}
     ${axisLabels}
   </svg>`;
 }
