@@ -351,6 +351,13 @@ textarea{width:100%;padding:10px;border:1.5px solid var(--line);border-radius:6p
 .done-card.collapsed .done-note-wrap,.done-card.collapsed .lot-date{display:none;}
 .done-note{width:100%;min-height:50px;padding:9px 11px;border:1.5px solid var(--line);border-radius:6px;font-family:'Inter',sans-serif;font-size:13.5px;font-weight:700;color:var(--accent-deep);background:var(--accent-light);resize:vertical;}
 .done-note::placeholder{font-weight:400;color:var(--muted);}
+.next-page-link-wrap{display:flex;justify-content:center;margin:28px 16px 36px;}
+.next-page-link-wrap a{display:inline-flex;align-items:center;gap:8px;padding:11px 19px;border-radius:8px;background:#16233F;color:#fff;text-decoration:none;font-size:14px;font-weight:700;transition:transform .1s, box-shadow .15s;}
+.next-page-link-wrap a:hover{transform:translateY(-2px);box-shadow:0 8px 16px rgba(22,35,63,0.25);}
+.insight-row{display:flex;gap:24px;flex-wrap:wrap;align-items:stretch;}
+.insight-row .pie-chart-wrap{flex:1;min-width:240px;}
+.mountain-chart-wrap{flex:1;min-width:240px;}
+.mountain-svg{width:100%;height:auto;display:block;}
  
 @media(max-width:640px){
   .topbar{padding:16px 16px 0;} .main{padding:20px 14px 60px;} .modal{margin-top:0;}
@@ -1272,11 +1279,18 @@ function renderLogFeed(){
   $('log-feed').innerHTML = sorted.map(e=> feedEntryHTML(e, true, true)).join('');
   bindFeed($('log-feed'), renderLogFeed);
 }
+const UI_STATE_FEED_KEY = 'ndlog_feed_hidden';
+function applyFeedHiddenState(hidden){
+  $('log-feed').classList.toggle('hidden', hidden);
+  $('btn-toggle-feed').textContent = hidden ? 'Hiện tất cả' : 'Ẩn bớt';
+}
 $('btn-toggle-feed').addEventListener('click', ()=>{
   const el = $('log-feed');
   const hidden = el.classList.toggle('hidden');
   $('btn-toggle-feed').textContent = hidden ? 'Hiện tất cả' : 'Ẩn bớt';
+  localStorage.setItem(UI_STATE_FEED_KEY, hidden ? '1' : '0');
 });
+applyFeedHiddenState(localStorage.getItem(UI_STATE_FEED_KEY) === '1');
  
 /* ---------- Calendar ---------- */
 function renderCalendar(){
@@ -1321,10 +1335,17 @@ $('btn-log-this-day').addEventListener('click', ()=>{
   $('e-date').value = selectedDate || todayISO();
   window.scrollTo({top:0, behavior:'smooth'});
 });
+const UI_STATE_CAL_KEY = 'ndlog_cal_collapsed';
+function applyCalCollapsedState(collapsed){
+  $('cal-body').classList.toggle('collapsed', collapsed);
+  $('cal-toggle').textContent = collapsed ? 'Hiện lịch' : 'Ẩn lịch';
+}
 $('cal-toggle').addEventListener('click', ()=>{
   const collapsed = $('cal-body').classList.toggle('collapsed');
   $('cal-toggle').textContent = collapsed ? 'Hiện lịch' : 'Ẩn lịch';
+  localStorage.setItem(UI_STATE_CAL_KEY, collapsed ? '1' : '0');
 });
+applyCalCollapsedState(localStorage.getItem(UI_STATE_CAL_KEY) === '1');
  
 /* ---------- Summary ---------- */
 document.querySelectorAll('.summary-toggle button').forEach(btn=>{
@@ -1616,10 +1637,66 @@ function renderComparisonChart(periodLogs){
       <span class="pie-legend-label">${escapeHtml(label)}</span>
       <span class="pie-legend-val mono">${v} (${Math.round(v/total*100)}%)</span>
     </div>`).join('');
-  body.innerHTML = `<div class="pie-chart-wrap">
-      <div class="pie-chart" style="background:conic-gradient(${stops});"></div>
-      <div class="pie-legend">${legend}</div>
+  body.innerHTML = `<div class="insight-row">
+      <div class="pie-chart-wrap">
+        <div class="pie-chart" style="background:conic-gradient(${stops});"></div>
+        <div class="pie-legend">${legend}</div>
+      </div>
+      <div class="mountain-chart-wrap">
+        ${mountainChartSVG(entries)}
+      </div>
     </div>`;
+}
+function mountainChartSVG(entries){
+  const w = 340, h = 200, padLeft = 6, padRight = 32, padTop = 10, padBottom = 22;
+  const values = entries.map(([,v])=>v);
+  const rawMax = Math.max(...values, 1);
+  const rawMin = Math.min(...values, 0);
+  const range = (rawMax - rawMin) || 1;
+  const yMax = rawMax + range * 0.1;
+  const yMin = Math.max(0, rawMin - range * 0.1);
+  const n = entries.length;
+  const innerW = w - padLeft - padRight;
+  const innerH = h - padTop - padBottom;
+  const xFor = i => padLeft + (n>1 ? (i/(n-1))*innerW : innerW/2);
+  const yFor = v => padTop + innerH * (1 - (v - yMin) / (yMax - yMin || 1));
+  const points = entries.map(([label,v],i)=>({x:xFor(i), y:yFor(v), v, label}));
+
+  const gridCount = 5;
+  let grid = '', yLabels = '';
+  for(let g=0; g<=gridCount; g++){
+    const val = yMin + (yMax - yMin) * g / gridCount;
+    const y = yFor(val);
+    grid += `<line x1="${padLeft}" y1="${y.toFixed(1)}" x2="${w-padRight}" y2="${y.toFixed(1)}" stroke="#E5E1D8" stroke-width="1"/>`;
+    yLabels += `<text x="${(w-padRight+5).toFixed(1)}" y="${(y+3).toFixed(1)}" font-size="8.5" fill="#726C5F">${Math.round(val)}</text>`;
+  }
+
+  let segments = '';
+  for(let i=0; i<points.length-1; i++){
+    const p1 = points[i], p2 = points[i+1];
+    const color = p2.v >= p1.v ? '#3E7C55' : '#B3462F';
+    segments += `<line x1="${p1.x.toFixed(1)}" y1="${p1.y.toFixed(1)}" x2="${p2.x.toFixed(1)}" y2="${p2.y.toFixed(1)}" stroke="${color}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>`;
+  }
+  const firstColor = points.length>1 && points[1].v < points[0].v ? '#B3462F' : '#3E7C55';
+  const dots = points.map((p,i)=>{
+    const c = i===0 ? firstColor : (p.v >= points[i-1].v ? '#3E7C55' : '#B3462F');
+    return `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="2.2" fill="${c}"/>`;
+  }).join('');
+
+  const showEvery = n > 9 ? Math.ceil(n/9) : 1;
+  const axisLabels = points.map((p,i)=>{
+    if(i % showEvery !== 0 && i !== n-1) return '';
+    const short = p.label.length>6 ? p.label.slice(0,6) : p.label;
+    return `<text x="${p.x.toFixed(1)}" y="${h-6}" font-size="8" text-anchor="middle" fill="#726C5F">${escapeHtml(short)}</text>`;
+  }).join('');
+
+  return `<svg viewBox="0 0 ${w} ${h}" class="mountain-svg" xmlns="http://www.w3.org/2000/svg">
+    ${grid}
+    ${segments}
+    ${dots}
+    ${yLabels}
+    ${axisLabels}
+  </svg>`;
 }
 
 /* ---------- Notes rollup (week → days, month → weeks, year → months) ---------- */
@@ -1776,6 +1853,6 @@ function initHeaderDate(){
    renderDoneLots();
 })();
 </script>
-<a href="checklist-lo-hang.html" style="font-size: 20px; display: block; text-align: center; margin: 20px;">Bấm vào đây để xem trang nhật ký tiếp theo</a>
+<div class="next-page-link-wrap"><a href="checklist-lo-hang.html">Nhật ký tiếp theo -></a></div>
 </body>
 </html>
