@@ -1063,7 +1063,7 @@ function renderShipments(){
     const nameInput = document.createElement('input');
     nameInput.type = 'text';
     nameInput.className = 'shipment-name';
-    nameInput.value = shipment.name;
+    nameInput.value = (String(shipment.customer||'').trim() && String(shipment.code||'').trim() ? String(shipment.customer).trim()+' '+String(shipment.code).trim() : (String(shipment.customer||'').trim() || String(shipment.code||'').trim() || String(shipment.name||'').trim() || 'Lô hàng chưa đặt tên'));
     nameInput.setAttribute('aria-label','Tên lô hàng');
     nameInput.onchange = ()=>{ shipment.name = nameInput.value.trim() || 'Lô hàng chưa đặt tên'; saveState(); };
     head.appendChild(nameInput);
