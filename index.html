@@ -1603,7 +1603,7 @@ function entryWorkload(e){
   return steps+recruit+mkt+other;
 }
 function renderComparisonChart(periodLogs){
-  let title, data;
+  let title, data, pieData;
   if(summaryMode==='week'){
     title = 'Năng suất công việc';
     const labels=['T2','T3','T4','T5','T6','T7','CN'];
@@ -1614,6 +1614,7 @@ function renderComparisonChart(periodLogs){
     });
     data = {};
     labels.forEach(l=>{ if(raw[l]>0) data[l]=raw[l]; });
+    pieData = data;
   } else if(summaryMode==='month'){
     title = 'Năng suất công việc';
     const [y,m] = currentPeriod.split('-').map(Number);
@@ -1624,17 +1625,27 @@ function renderComparisonChart(periodLogs){
     const raw = {};
     periodLogs.forEach(e=>{ raw[e.date] = (raw[e.date]||0) + entryWorkload(e); });
     data = {};
+    const weekRaw = {}, weekOrder = [];
     for(let d=1; d<=endDay; d++){
       const dateStr = `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
       const v = raw[dateStr]||0;
       if(v>0) data[String(d).padStart(2,'0')] = v;
+      const wk = weekKey(dateStr);
+      if(!(wk in weekRaw)){ weekRaw[wk]=0; weekOrder.push(wk); }
+      weekRaw[wk] += v;
     }
+    pieData = {};
+    weekOrder.forEach((wk,idx)=>{
+      const v = weekRaw[wk];
+      if(v>0) pieData['Tuần '+(idx+1)] = v;
+    });
   } else {
     title = 'Biểu đồ năng suất';
     const y = currentPeriod;
     const today = todayISO();
     const isCurrentYear = y === today.slice(0,4);
     const endWeek = isCurrentYear ? getISOWeek(today).week : getISOWeek(`${y}-12-28`).week;
+    const endMonth = isCurrentYear ? Number(today.slice(5,7)) : 12;
     const raw = {};
     periodLogs.forEach(e=>{ const wk = weekKey(e.date); raw[wk] = (raw[wk]||0) + entryWorkload(e); });
     data = {};
@@ -1643,22 +1654,31 @@ function renderComparisonChart(periodLogs){
       const v = raw[wk]||0;
       if(v>0) data['Tuần '+w] = v;
     }
+    const monthRaw = {};
+    periodLogs.forEach(e=>{ const mm = e.date.slice(5,7); monthRaw[mm] = (monthRaw[mm]||0) + entryWorkload(e); });
+    pieData = {};
+    for(let m=1; m<=endMonth; m++){
+      const mm = String(m).padStart(2,'0');
+      const v = monthRaw[mm]||0;
+      if(v>0) pieData['Tháng '+m] = v;
+    }
   }
   $('compare-title').textContent = title;
   const entries = Object.entries(data);
+  const pieEntries = Object.entries(pieData);
   const body = $('compare-body');
   if(entries.length===0){
     body.innerHTML = `<div class="rollup-empty">Chưa có đủ dữ liệu để so sánh trong kỳ này.</div>`;
     return;
   }
-  const total = entries.reduce((s,[,v])=>s+v,0) || 1;
+  const total = pieEntries.reduce((s,[,v])=>s+v,0) || 1;
   let cursor = 0;
-  const stops = entries.map(([,v],i)=>{
+  const stops = pieEntries.map(([,v],i)=>{
     const start = cursor;
     cursor += (v/total)*100;
     return `${COMPARE_PALETTE[i%COMPARE_PALETTE.length]} ${start}% ${cursor}%`;
   }).join(', ');
-  const legend = entries.map(([label,v],i)=>`<div class="pie-legend-row">
+  const legend = pieEntries.map(([label,v],i)=>`<div class="pie-legend-row">
       <span class="pie-swatch" style="background:${COMPARE_PALETTE[i%COMPARE_PALETTE.length]};"></span>
       <span class="pie-legend-label">${escapeHtml(label)}</span>
       <span class="pie-legend-val mono">${v} (${Math.round(v/total*100)}%)</span>
