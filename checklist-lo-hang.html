@@ -1255,13 +1255,16 @@ async function recordJournalFromChecklist(shipment, keys, date){
     const customer=shipment.customer||shipment.name||'';
     const code=shipment.code||'';
     const displayName=shipment.name||code||customer;
-    let lot=lots.find(l=>l&&l.id===shipment.journalLotId);
+    const matchesShipment=lot=>{
+      if(!lot) return false;
+      if(customer&&code) return norm(lot.customer)===norm(customer)&&norm(lot.code)===norm(code);
+      if(code) return norm(lot.code)===norm(code);
+      if(customer) return norm(lot.customer)===norm(customer);
+      return displayName&&(norm(lot.code)===norm(displayName)||norm(lot.customer)===norm(displayName));
+    };
+    let lot=lots.find(l=>l&&l.id===shipment.journalLotId&&matchesShipment(l));
     if(!lot){
-      lot=lots.find(l=>l&&(
-        (code&&norm(l.code)===norm(code)) ||
-        (customer&&norm(l.customer)===norm(customer)) ||
-        (displayName&&(norm(l.code)===norm(displayName)||norm(l.customer)===norm(displayName)))
-      ));
+      lot=lots.find(matchesShipment);
     }
     if(!lot){
       lot={id:uid(),customer:customer||displayName,code:code,type:shipment.lotType||(shipment.type==='export'?'Hàng xuất sea':'Hàng nhập sea'),date:date,doneFlag:false,doneDate:null};
