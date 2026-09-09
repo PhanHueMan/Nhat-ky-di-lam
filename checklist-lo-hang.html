@@ -692,7 +692,9 @@ function journalKeysForTask(text){
   return [...new Set(keys)];
 }
 function taskJournalKeys(item){
-  const auto = journalKeysForTask(item.text);\n  if(item.journalManual===true) return Array.isArray(item.journalKeys) ? item.journalKeys : [];\n  return auto;
+  const auto = journalKeysForTask(item.text);
+  if(item.journalManual===true) return Array.isArray(item.journalKeys) ? item.journalKeys : [];
+  return auto;
 }
 const JOURNAL_OPTIONS=['AN','MNF','EDO','Khai nháp TK','Tờ khai','Lấy TK thông quan','Lấy MV','SI','VGM','Bill draft','Bill (final)','Bill Sur'];
 async function editItem(item){
