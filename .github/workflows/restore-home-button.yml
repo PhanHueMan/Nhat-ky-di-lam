@@ -18,10 +18,7 @@ jobs:
           p=Path('checklist-lo-hang.html')
           s=p.read_text(encoding='utf-8')
           old="return Array.isArray(item.journalKeys) ? item.journalKeys : journalKeysForTask(item.text);"
-          new="""const auto = journalKeysForTask(item.text);
-  if(item.journalManual===true) return Array.isArray(item.journalKeys) ? item.journalKeys : [];
-  // Dữ liệu cũ từng bị auto-map quá rộng: bỏ journalKeys cũ và tính lại theo rule chuẩn.
-  return auto;"""
+          new="const auto = journalKeysForTask(item.text);\\n  if(item.journalManual===true) return Array.isArray(item.journalKeys) ? item.journalKeys : [];\\n  return auto;"
           if old not in s: raise SystemExit('taskJournalKeys marker missing')
           s=s.replace(old,new,1)
           old2="item.journalKeys=answer.split(',').map(v=>v.trim()).filter(Boolean).map(v=>JOURNAL_OPTIONS.find(o=>o.toLowerCase()===v.toLowerCase())).filter((v,i,a)=>v&&a.indexOf(v)===i);"
