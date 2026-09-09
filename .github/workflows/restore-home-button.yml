@@ -1,4 +1,4 @@
-name: Fix journal mapping
+name: Restore checklist item editor
 on:
   push:
     paths:
@@ -10,19 +10,86 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Patch mapping
+      - name: Restore edit and journal controls
         shell: bash
         run: |
           python3 - <<'PY'
           from pathlib import Path
           p=Path("checklist-lo-hang.html")
           s=p.read_text(encoding="utf-8")
-          s=s.replace("if(t === 'up mnf lên vnsw' || t.includes('khai mnf') || t.includes('up mnf')) keys.push('MNF');", "if(t === 'up mnf lên vnsw') keys.push('MNF');")
-          s=s.replace("if(t.startsWith('phát hành edo') || t.includes('phát hành edo / đưa edo cho khách')) keys.push('EDO');", "if(t.startsWith('tạo edo') || t.startsWith('phát hành edo') || t.startsWith('đưa edo cho khách')) keys.push('EDO');")
-          s=s.replace("if(t.startsWith('chỉnh sửa bill')) keys.push('Bill draft');", "if(t.startsWith('gửi bill nháp cho khách')) keys.push('Bill draft');")
-          s=s.replace("if(t.startsWith('xem lại fms bill đã đúng chưa, phát hành hbl') || t.includes('phát hành hbl')) keys.push('Bill (final)');", "if(t.startsWith('xem lại fms bill đã đúng chưa, phát hành hbl') || t.startsWith('phát hành hbl')) keys.push('Bill (final)');")
-          s=s.replace("if(t.startsWith('lấy bill sur về gửi khách') || t.includes('bill sur')) keys.push('Bill Sur');", "if(t.startsWith('lấy bill sur về gửi khách')) keys.push('Bill Sur');")
-          s=s.replace("return Array.isArray(item.journalKeys) ? item.journalKeys : journalKeysForTask(item.text);", "return journalKeysForTask(item.text);")
+
+          old="""function taskJournalKeys(item){
+  return journalKeysForTask(item.text);
+}"""
+          new="""function taskJournalKeys(item){
+  // Nếu người dùng đã tự cấu hình Nhật ký cho đầu việc thì ưu tiên cấu hình đó.
+  // Nếu chưa từng cấu hình, dùng mapping mặc định đã siết chặt.
+  return Array.isArray(item.journalKeys) ? item.journalKeys : journalKeysForTask(item.text);
+}
+const JOURNAL_OPTIONS = ['AN','MNF','EDO','Khai nháp TK','Tờ khai','Lấy TK thông quan','Lấy MV','SI','VGM','Bill draft','Bill (final)','Bill Sur'];
+
+async function editItem(item){
+  const newText = prompt('Tên đầu việc:', item.text);
+  if(newText===null) return;
+  const text = newText.trim();
+  if(!text) return;
+
+  const current = taskJournalKeys(item);
+  const answer = prompt(
+    'Cập nhật sang Nhật ký?\\n- Để trống = KHÔNG cập nhật\\n- Nhập một hoặc nhiều mục, cách nhau bằng dấu phẩy.\\n\\nCác mục: '+JOURNAL_OPTIONS.join(', '),
+    current.join(', ')
+  );
+  if(answer===null) return;
+
+  const wanted = answer.split(',').map(v=>v.trim()).filter(Boolean);
+  const normalized = [];
+  wanted.forEach(v=>{
+    const found = JOURNAL_OPTIONS.find(o=>o.toLowerCase()===v.toLowerCase());
+    if(found && !normalized.includes(found)) normalized.push(found);
+  });
+
+  item.text = text;
+  item.journalKeys = normalized;
+  await saveState();
+  render();
+}"""
+          if old not in s: raise SystemExit("taskJournalKeys marker missing")
+          s=s.replace(old,new,1)
+
+          old2="""        row.innerHTML = `<span>${escapeHtml(it.text)}</span>`;
+        const del = document.createElement('button');"""
+          new2="""        const info = document.createElement('span');
+        info.innerHTML = escapeHtml(it.text);
+        const keys = taskJournalKeys(it);
+        if(keys.length){
+          const mark=document.createElement('small');
+          mark.style.cssText='display:block;color:var(--done);font-weight:700;margin-top:3px;';
+          mark.textContent='→ Nhật ký: '+keys.join(' + ');
+          info.appendChild(mark);
+        } else {
+          const mark=document.createElement('small');
+          mark.style.cssText='display:block;color:#8a8f98;margin-top:3px;';
+          mark.textContent='Không cập nhật Nhật ký';
+          info.appendChild(mark);
+        }
+        row.appendChild(info);
+
+        const edit = document.createElement('button');
+        edit.className = 'del-mini';
+        edit.textContent = 'Sửa';
+        edit.title = 'Sửa đầu việc và cài đặt cập nhật Nhật ký';
+        edit.onclick = ()=>editItem(it);
+        row.appendChild(edit);
+
+        const del = document.createElement('button');"""
+          if old2 not in s: raise SystemExit("manage row marker missing")
+          s=s.replace(old2,new2,1)
+
+          old3="""  const newItems = lines.map(function(text){ return {id:uid(), type:type, section:section, subsection:subsection, text:text, journalKeys:journalKeysForTask(text)}; });"""
+          new3="""  const newItems = lines.map(function(text){ return {id:uid(), type:type, section:section, subsection:subsection, text:text}; });"""
+          if old3 not in s: raise SystemExit("newItems marker missing")
+          s=s.replace(old3,new3,1)
+
           p.write_text(s,encoding="utf-8")
           PY
       - name: Commit
@@ -31,4 +98,4 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add checklist-lo-hang.html
-          git diff --cached --quiet || (git commit -m "Fix journal mapping duplicates" && git push)
+          git diff --cached --quiet || (git commit -m "Restore checklist item edit and journal controls" && git push)
