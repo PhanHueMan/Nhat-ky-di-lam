@@ -692,7 +692,18 @@ function journalKeysForTask(text){
   return [...new Set(keys)];
 }
 function taskJournalKeys(item){
-  return journalKeysForTask(item.text);
+  return Array.isArray(item.journalKeys) ? item.journalKeys : journalKeysForTask(item.text);
+}
+const JOURNAL_OPTIONS=['AN','MNF','EDO','Khai nháp TK','Tờ khai','Lấy TK thông quan','Lấy MV','SI','VGM','Bill draft','Bill (final)','Bill Sur'];
+async function editItem(item){
+  const newText=prompt('Tên đầu việc:',item.text);
+  if(newText===null||!newText.trim()) return;
+  const answer=prompt('Cập nhật Nhật ký? Để trống = Không. Nhập mục, cách nhau dấu phẩy:\n'+JOURNAL_OPTIONS.join(', '),taskJournalKeys(item).join(', '));
+  if(answer===null) return;
+  item.text=newText.trim();
+  item.journalKeys=answer.split(',').map(v=>v.trim()).filter(Boolean).map(v=>JOURNAL_OPTIONS.find(o=>o.toLowerCase()===v.toLowerCase())).filter((v,i,a)=>v&&a.indexOf(v)===i);
+  await saveState();
+  render();
 }
 
 let state = { items: [], shipments: [] };
@@ -981,7 +992,20 @@ function renderManage(){
       g.items.forEach(it=>{
         const row = document.createElement('div');
         row.className = 'existing-item-row';
-        row.innerHTML = `<span>${escapeHtml(it.text)}</span>`;
+        row.innerHTML='';
+        const info=document.createElement('span');
+        info.textContent=it.text;
+        const keys=taskJournalKeys(it);
+        const mark=document.createElement('small');
+        mark.style.cssText='display:block;margin-top:3px;font-weight:700;';
+        mark.textContent=keys.length ? '→ Nhật ký: '+keys.join(' + ') : 'Không cập nhật Nhật ký';
+        info.appendChild(mark);
+        row.appendChild(info);
+        const edit=document.createElement('button');
+        edit.className='del-mini';
+        edit.textContent='Sửa';
+        edit.onclick=()=>editItem(it);
+        row.appendChild(edit);
         const del = document.createElement('button');
         del.className = 'del-mini';
         del.textContent = '\u2715';
@@ -1337,7 +1361,7 @@ document.getElementById('bulkAddBtn').onclick = function(){
   const subsection = document.getElementById('bulkSubsection').value.trim() || 'Chung';
   const lines = document.getElementById('bulkText').value.split('\n').map(function(l){return l.trim();}).filter(Boolean);
   if(lines.length===0) return;
-  const newItems = lines.map(function(text){ return {id:uid(), type:type, section:section, subsection:subsection, text:text, journalKeys:journalKeysForTask(text)}; });
+  const newItems = lines.map(function(text){ return {id:uid(), type:type, section:section, subsection:subsection, text:text}; });
   state.items.push.apply(state.items, newItems);
   state.shipments.forEach(function(s){
     if(s.type===type){ newItems.forEach(function(it){ s.checks[it.id]=false; }); }
