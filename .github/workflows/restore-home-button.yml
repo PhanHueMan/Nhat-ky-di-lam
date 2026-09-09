@@ -1,8 +1,8 @@
-name: Restore checklist item editor
+name: Restore checklist editor
 on:
   push:
     paths:
-      - .github/workflows/restore-home-button.yml
+      - '.github/workflows/restore-home-button.yml'
 permissions:
   contents: write
 jobs:
@@ -10,87 +10,32 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Restore edit and journal controls
+      - name: Patch editor
         shell: bash
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          p=Path("checklist-lo-hang.html")
-          s=p.read_text(encoding="utf-8")
+          p=Path('checklist-lo-hang.html')
+          s=p.read_text(encoding='utf-8')
 
-          old="""function taskJournalKeys(item){
-  return journalKeysForTask(item.text);
-}"""
-          new="""function taskJournalKeys(item){
-  // Nếu người dùng đã tự cấu hình Nhật ký cho đầu việc thì ưu tiên cấu hình đó.
-  // Nếu chưa từng cấu hình, dùng mapping mặc định đã siết chặt.
-  return Array.isArray(item.journalKeys) ? item.journalKeys : journalKeysForTask(item.text);
-}
-const JOURNAL_OPTIONS = ['AN','MNF','EDO','Khai nháp TK','Tờ khai','Lấy TK thông quan','Lấy MV','SI','VGM','Bill draft','Bill (final)','Bill Sur'];
-
-async function editItem(item){
-  const newText = prompt('Tên đầu việc:', item.text);
-  if(newText===null) return;
-  const text = newText.trim();
-  if(!text) return;
-
-  const current = taskJournalKeys(item);
-  const answer = prompt(
-    'Cập nhật sang Nhật ký?\\n- Để trống = KHÔNG cập nhật\\n- Nhập một hoặc nhiều mục, cách nhau bằng dấu phẩy.\\n\\nCác mục: '+JOURNAL_OPTIONS.join(', '),
-    current.join(', ')
-  );
-  if(answer===null) return;
-
-  const wanted = answer.split(',').map(v=>v.trim()).filter(Boolean);
-  const normalized = [];
-  wanted.forEach(v=>{
-    const found = JOURNAL_OPTIONS.find(o=>o.toLowerCase()===v.toLowerCase());
-    if(found && !normalized.includes(found)) normalized.push(found);
-  });
-
-  item.text = text;
-  item.journalKeys = normalized;
-  await saveState();
-  render();
-}"""
-          if old not in s: raise SystemExit("taskJournalKeys marker missing")
+          old = "function taskJournalKeys(item){\n  return journalKeysForTask(item.text);\n}"
+          new = "function taskJournalKeys(item){\n  return Array.isArray(item.journalKeys) ? item.journalKeys : journalKeysForTask(item.text);\n}\nconst JOURNAL_OPTIONS=['AN','MNF','EDO','Khai nháp TK','Tờ khai','Lấy TK thông quan','Lấy MV','SI','VGM','Bill draft','Bill (final)','Bill Sur'];\nasync function editItem(item){\n  const newText=prompt('Tên đầu việc:',item.text);\n  if(newText===null||!newText.trim()) return;\n  const answer=prompt('Cập nhật Nhật ký? Để trống = Không. Nhập mục, cách nhau dấu phẩy:\\n'+JOURNAL_OPTIONS.join(', '),taskJournalKeys(item).join(', '));\n  if(answer===null) return;\n  item.text=newText.trim();\n  item.journalKeys=answer.split(',').map(v=>v.trim()).filter(Boolean).map(v=>JOURNAL_OPTIONS.find(o=>o.toLowerCase()===v.toLowerCase())).filter((v,i,a)=>v&&a.indexOf(v)===i);\n  await saveState();\n  render();\n}"
+          if old not in s:
+            raise SystemExit('taskJournalKeys marker missing')
           s=s.replace(old,new,1)
 
-          old2="""        row.innerHTML = `<span>${escapeHtml(it.text)}</span>`;
-        const del = document.createElement('button');"""
-          new2="""        const info = document.createElement('span');
-        info.innerHTML = escapeHtml(it.text);
-        const keys = taskJournalKeys(it);
-        if(keys.length){
-          const mark=document.createElement('small');
-          mark.style.cssText='display:block;color:var(--done);font-weight:700;margin-top:3px;';
-          mark.textContent='→ Nhật ký: '+keys.join(' + ');
-          info.appendChild(mark);
-        } else {
-          const mark=document.createElement('small');
-          mark.style.cssText='display:block;color:#8a8f98;margin-top:3px;';
-          mark.textContent='Không cập nhật Nhật ký';
-          info.appendChild(mark);
-        }
-        row.appendChild(info);
-
-        const edit = document.createElement('button');
-        edit.className = 'del-mini';
-        edit.textContent = 'Sửa';
-        edit.title = 'Sửa đầu việc và cài đặt cập nhật Nhật ký';
-        edit.onclick = ()=>editItem(it);
-        row.appendChild(edit);
-
-        const del = document.createElement('button');"""
-          if old2 not in s: raise SystemExit("manage row marker missing")
+          old2 = "        row.innerHTML = `<span>${escapeHtml(it.text)}</span>`;\n        const del = document.createElement('button');"
+          new2 = "        row.innerHTML='';\n        const info=document.createElement('span');\n        info.textContent=it.text;\n        const keys=taskJournalKeys(it);\n        const mark=document.createElement('small');\n        mark.style.cssText='display:block;margin-top:3px;font-weight:700;';\n        mark.textContent=keys.length ? '→ Nhật ký: '+keys.join(' + ') : 'Không cập nhật Nhật ký';\n        info.appendChild(mark);\n        row.appendChild(info);\n        const edit=document.createElement('button');\n        edit.className='del-mini';\n        edit.textContent='Sửa';\n        edit.onclick=()=>editItem(it);\n        row.appendChild(edit);\n        const del = document.createElement('button');"
+          if old2 not in s:
+            raise SystemExit('manage row marker missing')
           s=s.replace(old2,new2,1)
 
-          old3="""  const newItems = lines.map(function(text){ return {id:uid(), type:type, section:section, subsection:subsection, text:text, journalKeys:journalKeysForTask(text)}; });"""
-          new3="""  const newItems = lines.map(function(text){ return {id:uid(), type:type, section:section, subsection:subsection, text:text}; });"""
-          if old3 not in s: raise SystemExit("newItems marker missing")
-          s=s.replace(old3,new3,1)
+          old3 = "  const newItems = lines.map(function(text){ return {id:uid(), type:type, section:section, subsection:subsection, text:text, journalKeys:journalKeysForTask(text)}; });"
+          new3 = "  const newItems = lines.map(function(text){ return {id:uid(), type:type, section:section, subsection:subsection, text:text}; });"
+          if old3 in s:
+            s=s.replace(old3,new3,1)
 
-          p.write_text(s,encoding="utf-8")
+          p.write_text(s,encoding='utf-8')
           PY
       - name: Commit
         shell: bash
@@ -98,4 +43,4 @@ async function editItem(item){
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add checklist-lo-hang.html
-          git diff --cached --quiet || (git commit -m "Restore checklist item edit and journal controls" && git push)
+          git diff --cached --quiet || (git commit -m "Restore item editor and journal setting" && git push)
