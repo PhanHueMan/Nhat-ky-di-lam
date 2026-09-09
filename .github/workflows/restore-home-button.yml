@@ -1,8 +1,8 @@
-name: Restore checklist home button
+name: Fix journal mapping
 on:
   push:
-    paths: ['.github/workflows/restore-home-button.yml']
-  workflow_dispatch:
+    paths:
+      - .github/workflows/restore-home-button.yml
 permissions:
   contents: write
 jobs:
@@ -10,58 +10,25 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Tighten journal mapping
+      - name: Patch mapping
+        shell: bash
         run: |
-          python - <<'PY'
+          python3 - <<'PY'
           from pathlib import Path
-          p = Path('checklist-lo-hang.html')
-          s = p.read_text(encoding='utf-8')
-          start = s.index('function journalKeysForTask(text){')
-          end = s.index('\nlet state =', start)
-          new = r"""function journalKeysForTask(text){
-  const t = String(text||'').trim().toLowerCase();
-  const keys = [];
-
-  // Chỉ map đúng đầu việc CHÍNH đã hoàn thành nghiệp vụ.
-  // Không map chỉ vì câu có nhắc tới MNF / EDO / Bill Sur...
-  if(t === 'tạo an cho khách' || t.startsWith('tạo an cho khách') || t.startsWith('phát hành an')) keys.push('AN');
-
-  if(t === 'up mnf lên vnsw') keys.push('MNF');
-
-  if(t === 'khai tờ khai nháp') keys.push('Khai nháp TK');
-  if(t.startsWith('truyền tờ khai chính thức')) keys.push('Tờ khai');
-
-  if(t.startsWith('lấy tờ khai thông quan')){
-    keys.push('Lấy TK thông quan');
-    if(t.includes('lấy mv')) keys.push('Lấy MV');
-  }
-
-  if(t.startsWith('tạo edo') || t.startsWith('phát hành edo') || t.startsWith('đưa edo cho khách')) keys.push('EDO');
-
-  if(t.startsWith('submit si')){
-    keys.push('SI');
-    if(/\bvgm\b/.test(t)) keys.push('VGM');
-  }
-
-  if(t.startsWith('gửi bill nháp cho khách')) keys.push('Bill draft');
-
-  if(t.startsWith('xem lại fms bill đã đúng chưa, phát hành hbl') || t.startsWith('phát hành hbl')) keys.push('Bill (final)');
-
-  if(t.startsWith('lấy bill sur về gửi khách')) keys.push('Bill Sur');
-
-  return [...new Set(keys)];
-}
-function taskJournalKeys(item){
-  // Luôn tính lại từ nội dung hiện tại để loại journalKeys cũ đã map quá rộng.
-  return journalKeysForTask(item.text);
-}
-"""
-          s = s[:start] + new + s[end:]
-          p.write_text(s, encoding='utf-8')
+          p=Path("checklist-lo-hang.html")
+          s=p.read_text(encoding="utf-8")
+          s=s.replace("if(t === 'up mnf lên vnsw' || t.includes('khai mnf') || t.includes('up mnf')) keys.push('MNF');", "if(t === 'up mnf lên vnsw') keys.push('MNF');")
+          s=s.replace("if(t.startsWith('phát hành edo') || t.includes('phát hành edo / đưa edo cho khách')) keys.push('EDO');", "if(t.startsWith('tạo edo') || t.startsWith('phát hành edo') || t.startsWith('đưa edo cho khách')) keys.push('EDO');")
+          s=s.replace("if(t.startsWith('chỉnh sửa bill')) keys.push('Bill draft');", "if(t.startsWith('gửi bill nháp cho khách')) keys.push('Bill draft');")
+          s=s.replace("if(t.startsWith('xem lại fms bill đã đúng chưa, phát hành hbl') || t.includes('phát hành hbl')) keys.push('Bill (final)');", "if(t.startsWith('xem lại fms bill đã đúng chưa, phát hành hbl') || t.startsWith('phát hành hbl')) keys.push('Bill (final)');")
+          s=s.replace("if(t.startsWith('lấy bill sur về gửi khách') || t.includes('bill sur')) keys.push('Bill Sur');", "if(t.startsWith('lấy bill sur về gửi khách')) keys.push('Bill Sur');")
+          s=s.replace("return Array.isArray(item.journalKeys) ? item.journalKeys : journalKeysForTask(item.text);", "return journalKeysForTask(item.text);")
+          p.write_text(s,encoding="utf-8")
           PY
       - name: Commit
+        shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add checklist-lo-hang.html
-          git diff --cached --quiet || (git commit -m "Tighten checklist journal mapping" && git push)
+          git diff --cached --quiet || (git commit -m "Fix journal mapping duplicates" && git push)
