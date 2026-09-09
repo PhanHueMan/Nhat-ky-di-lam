@@ -678,21 +678,21 @@ function journalKeysForTask(text){
   const t = String(text||'').trim().toLowerCase();
   const keys = [];
   if(t === 'tạo an cho khách' || t.startsWith('tạo an ') || t.startsWith('phát hành an')) keys.push('AN');
-  if(t === 'up mnf lên vnsw' || t.includes('khai mnf') || t.includes('up mnf')) keys.push('MNF');
+  if(t === 'up mnf lên vnsw') keys.push('MNF');
   if(t === 'khai tờ khai nháp' || t.includes('tờ khai nháp')) keys.push('Khai nháp TK');
   if(t.startsWith('truyền tờ khai chính thức')) keys.push('Tờ khai');
   if(t.includes('lấy tờ khai thông quan')) keys.push('Lấy TK thông quan');
   if(t.includes('lấy tờ khai thông quan') && t.includes('lấy mv')) keys.push('Lấy MV');
-  if(t.startsWith('phát hành edo') || t.includes('phát hành edo / đưa edo cho khách')) keys.push('EDO');
+  if(t.startsWith('tạo edo') || t.startsWith('phát hành edo') || t.startsWith('đưa edo cho khách')) keys.push('EDO');
   if(t.startsWith('submit si')) keys.push('SI');
   if(t.startsWith('submit si') && /\bvgm\b/.test(t)) keys.push('VGM');
-  if(t.startsWith('chỉnh sửa bill')) keys.push('Bill draft');
-  if(t.startsWith('xem lại fms bill đã đúng chưa, phát hành hbl') || t.includes('phát hành hbl')) keys.push('Bill (final)');
-  if(t.startsWith('lấy bill sur về gửi khách') || t.includes('bill sur')) keys.push('Bill Sur');
+  if(t.startsWith('gửi bill nháp cho khách')) keys.push('Bill draft');
+  if(t.startsWith('xem lại fms bill đã đúng chưa, phát hành hbl') || t.startsWith('phát hành hbl')) keys.push('Bill (final)');
+  if(t.startsWith('lấy bill sur về gửi khách')) keys.push('Bill Sur');
   return [...new Set(keys)];
 }
 function taskJournalKeys(item){
-  return Array.isArray(item.journalKeys) ? item.journalKeys : journalKeysForTask(item.text);
+  return journalKeysForTask(item.text);
 }
 
 let state = { items: [], shipments: [] };
