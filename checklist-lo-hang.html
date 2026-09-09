@@ -692,7 +692,7 @@ function journalKeysForTask(text){
   return [...new Set(keys)];
 }
 function taskJournalKeys(item){
-  return Array.isArray(item.journalKeys) ? item.journalKeys : journalKeysForTask(item.text);
+  const auto = journalKeysForTask(item.text);\n  if(item.journalManual===true) return Array.isArray(item.journalKeys) ? item.journalKeys : [];\n  return auto;
 }
 const JOURNAL_OPTIONS=['AN','MNF','EDO','Khai nháp TK','Tờ khai','Lấy TK thông quan','Lấy MV','SI','VGM','Bill draft','Bill (final)','Bill Sur'];
 async function editItem(item){
@@ -701,7 +701,7 @@ async function editItem(item){
   const answer=prompt('Cập nhật Nhật ký? Để trống = Không. Nhập mục, cách nhau dấu phẩy:\n'+JOURNAL_OPTIONS.join(', '),taskJournalKeys(item).join(', '));
   if(answer===null) return;
   item.text=newText.trim();
-  item.journalKeys=answer.split(',').map(v=>v.trim()).filter(Boolean).map(v=>JOURNAL_OPTIONS.find(o=>o.toLowerCase()===v.toLowerCase())).filter((v,i,a)=>v&&a.indexOf(v)===i);
+  item.journalKeys=answer.split(',').map(v=>v.trim()).filter(Boolean).map(v=>JOURNAL_OPTIONS.find(o=>o.toLowerCase()===v.toLowerCase())).filter((v,i,a)=>v&&a.indexOf(v)===i); item.journalManual=true;
   await saveState();
   render();
 }
