@@ -1,4 +1,4 @@
-name: Repair journal mapping
+name: Repair journal mapping cleanly
 on:
   push:
     paths:
@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Repair mapping code
+      - name: Fix taskJournalKeys function
         shell: bash
         run: |
           python3 - <<'PY'
@@ -18,12 +18,15 @@ jobs:
           p=Path('checklist-lo-hang.html')
           s=p.read_text(encoding='utf-8')
           start=s.index('function taskJournalKeys(item){')
-          end=s.index('\nconst JOURNAL_OPTIONS=',start)
-          new='''function taskJournalKeys(item){
-  const auto = journalKeysForTask(item.text);
-  if(item.journalManual===true) return Array.isArray(item.journalKeys) ? item.journalKeys : [];
-  return auto;
-}'''
+          end=s.index('const JOURNAL_OPTIONS=', start)
+          new='\n'.join([
+            'function taskJournalKeys(item){',
+            '  const auto = journalKeysForTask(item.text);',
+            '  if(item.journalManual===true) return Array.isArray(item.journalKeys) ? item.journalKeys : [];',
+            '  return auto;',
+            '}',
+            ''
+          ])
           s=s[:start]+new+s[end:]
           p.write_text(s,encoding='utf-8')
           PY
@@ -33,4 +36,4 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add checklist-lo-hang.html
-          git diff --cached --quiet || (git commit -m "Repair journal mapping code" && git push)
+          git diff --cached --quiet || (git commit -m "Repair taskJournalKeys cleanly" && git push)
