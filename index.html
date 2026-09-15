@@ -682,6 +682,7 @@ const CLOSERS = [
 let lots = [];
 let logs = [];
 let reflections = {};
+let checklistShipments = [];
 let currentLotId = null;
 let currentFilter = 'all';
 let summaryMode = 'week';
@@ -697,6 +698,25 @@ const escapeHtml = (s)=>{ const d=document.createElement('div'); d.textContent=s
 const typeClass = (t)=>{ if(!t) return 'other'; if(t.includes('sea')) return 'sea'; if(t.includes('air')) return 'air'; return 'other'; };
 const emptyStateHTML = `<div class="empty-state">Không có dữ liệu</div>`;
  
+function normLotText(v){ return String(v||'').trim().toLowerCase().replace(/\s+/g,' '); }
+function checklistShipmentForLot(lot){
+  const customer=normLotText(lot.customer), code=normLotText(lot.code);
+  const exact=checklistShipments.find(sh=>{
+    const sc=normLotText(sh.customer), sd=normLotText(sh.code);
+    return (customer||code) && sc===customer && sd===code;
+  });
+  if(exact) return exact;
+  const target=normLotText(((lot.customer||'')+' '+(lot.code||'')).trim());
+  return checklistShipments.find(sh=>{
+    const name=normLotText(sh.name);
+    return target && (name===target || (customer && code && name.includes(customer) && name.includes(code)));
+  }) || null;
+}
+function lotLoadType(lot){
+  const sh=checklistShipmentForLot(lot);
+  return sh && (sh.lotType==='Hàng nhập sea' || sh.lotType==='Hàng xuất sea') ? (sh.loadType||'') : '';
+}
+
 function normalizeSteps(steps){
   if(!steps) return [];
   if(Array.isArray(steps)) return steps.filter(s=> s && s.qty>0 && s.label);
@@ -731,12 +751,15 @@ async function loadAll(){
     lots = data.lots || [];
     logs = data.entries || [];
     reflections = data.reflections || {};
+    const checklist = data.checklist || {};
+    checklistShipments = Array.isArray(checklist.shipments) ? checklist.shipments : Object.values(checklist.shipments || {});
 
   } catch(e) {
     console.error('Firebase load error:', e);
     lots = [];
     logs = [];
     reflections = {};
+    checklistShipments = [];
   }
 }
 
@@ -1466,13 +1489,31 @@ function renderSummary(){
   });
  
   const typeCounts = {}; const custCounts = {};
+  let seaFCL=0, seaLCL=0, seaUnknown=0;
   [...activeLotIds].forEach(id=>{
     const l = lots.find(x=>x.id===id); if(!l) return;
     typeCounts[l.type||'Khác'] = (typeCounts[l.type||'Khác']||0)+1;
     custCounts[l.customer||'(chưa đặt tên)'] = (custCounts[l.customer||'(chưa đặt tên)']||0)+1;
+    if((l.type||'').toLowerCase().includes('sea')){
+      const load=lotLoadType(l);
+      if(load==='FCL') seaFCL++;
+      else if(load==='LCL') seaLCL++;
+      else seaUnknown++;
+    }
   });
+  if(seaFCL) typeCounts['↳ FCL'] = seaFCL;
+  if(seaLCL) typeCounts['↳ LCL'] = seaLCL;
+  if(seaUnknown) typeCounts['↳ Sea chưa phân loại FCL/LCL'] = seaUnknown;
   renderBarBreakdown('breakdown-type-body', typeCounts, '', (label)=>{
-    const arr = lots.filter(l=> activeLotIds.has(l.id) && (l.type||'Khác')===label);
+    let arr;
+    if(label==='↳ FCL' || label==='↳ LCL'){
+      const load=label.replace('↳ ','');
+      arr=lots.filter(l=>activeLotIds.has(l.id) && (l.type||'').toLowerCase().includes('sea') && lotLoadType(l)===load);
+    } else if(label==='↳ Sea chưa phân loại FCL/LCL'){
+      arr=lots.filter(l=>activeLotIds.has(l.id) && (l.type||'').toLowerCase().includes('sea') && !lotLoadType(l));
+    } else {
+      arr=lots.filter(l=> activeLotIds.has(l.id) && (l.type||'Khác')===label);
+    }
     openDetail(`Loại hàng: ${label}`, lotListHTML(arr), c=>bindFeed(c));
   });
   renderBarBreakdown('breakdown-customer-body', custCounts, '', (label)=>{
@@ -1516,13 +1557,14 @@ async function exportBackup(){
       {header:'Khách hàng', key:'customer', width:22},
       {header:'Mã lô', key:'code', width:12},
       {header:'Loại hàng', key:'type', width:16},
+      {header:'FCL/LCL', key:'loadType', width:12},
       {header:'Ngày mở', key:'date', width:12},
       {header:'Hoàn thành', key:'done', width:12},
       {header:'Ngày hoàn thành', key:'doneDate', width:16},
       {header:'Ghi chú hoàn thành', key:'doneNote', width:34},
     ];
     lots.slice().sort((a,b)=>(a.date||'').localeCompare(b.date||'')).forEach(l=> ws1.addRow({
-      customer: l.customer||'', code: l.code||'', type: l.type||'', date: l.date||'',
+      customer: l.customer||'', code: l.code||'', type: l.type||'', loadType: lotLoadType(l), date: l.date||'',
       done: l.doneFlag?'Có':'Không', doneDate: l.doneDate||'', doneNote: l.doneNote||''
     }));
     styleHeader(ws1);
