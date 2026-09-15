@@ -1032,12 +1032,30 @@ function renderManage(){
         const journalSelect=document.createElement('select');
         journalSelect.title='Chọn nội dung cập nhật sang Nhật ký';
         journalSelect.style.cssText='max-width:190px;padding:6px 8px;border:1px solid #d8d2c6;border-radius:7px;background:#fff;font-size:12px;';
+        let matchedPreset=false;
         JOURNAL_PRESETS.forEach((preset,idx)=>{
           const opt=document.createElement('option'); opt.value=idx; opt.textContent=preset.label;
-          if(sameKeys(keys,preset.keys)) opt.selected=true;
+          if(sameKeys(keys,preset.keys)){ opt.selected=true; matchedPreset=true; }
           journalSelect.appendChild(opt);
         });
-        journalSelect.onchange=()=>setItemJournalPreset(it,journalSelect.value);
+        if(it.journalManual===true && keys.length===1 && !matchedPreset){
+          const customCurrent=document.createElement('option');
+          customCurrent.value='custom-current'; customCurrent.textContent='✏ '+keys[0]; customCurrent.selected=true;
+          journalSelect.appendChild(customCurrent);
+        }
+        const customOpt=document.createElement('option'); customOpt.value='custom'; customOpt.textContent='➕ Thêm nội dung khác...'; journalSelect.appendChild(customOpt);
+        journalSelect.onchange=async ()=>{
+          if(journalSelect.value==='custom'){
+            const text=prompt('Nhập nội dung muốn ghi vào Nhật ký:','');
+            if(text!==null && text.trim()){
+              it.journalKeys=[text.trim()]; it.journalManual=true;
+              await saveState(); render(); return;
+            }
+            render(); return;
+          }
+          if(journalSelect.value==='custom-current') return;
+          await setItemJournalPreset(it,journalSelect.value);
+        };
         row.appendChild(journalSelect);
 
         const edit=document.createElement('button');
