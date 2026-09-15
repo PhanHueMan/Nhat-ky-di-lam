@@ -714,7 +714,7 @@ function checklistShipmentForLot(lot){
 }
 function lotLoadType(lot){
   const sh=checklistShipmentForLot(lot);
-  return sh && (sh.lotType==='Hàng nhập sea' || sh.lotType==='Hàng xuất sea') ? (sh.loadType||'') : '';
+  return sh && (sh.lotType==='Hàng nhập sea' || (!sh.lotType && sh.type==='import')) ? (sh.loadType||'') : '';
 }
 
 function normalizeSteps(steps){
@@ -1488,29 +1488,29 @@ function renderSummary(){
     openDetail(`MKT: ${label}`, entryListHTML(arr), c=>bindFeed(c));
   });
  
-  const typeCounts = {}; const custCounts = {};
-  let seaFCL=0, seaLCL=0, seaUnknown=0;
+  const typeCounts = {}; const custCounts = {}; const seaLoadCounts = {FCL:0,LCL:0,'Chưa phân loại':0};
   [...activeLotIds].forEach(id=>{
     const l = lots.find(x=>x.id===id); if(!l) return;
     typeCounts[l.type||'Khác'] = (typeCounts[l.type||'Khác']||0)+1;
-    custCounts[l.customer||'(chưa đặt tên)'] = (custCounts[l.customer||'(chưa đặt tên)']||0)+1;
-    if((l.type||'').toLowerCase().includes('sea')){
+    if((l.type||'')==='Hàng nhập sea'){
       const load=lotLoadType(l);
-      if(load==='FCL') seaFCL++;
-      else if(load==='LCL') seaLCL++;
-      else seaUnknown++;
+      if(load==='FCL' || load==='LCL') seaLoadCounts[load]++;
+      else seaLoadCounts['Chưa phân loại']++;
     }
+    custCounts[l.customer||'(chưa đặt tên)'] = (custCounts[l.customer||'(chưa đặt tên)']||0)+1;
   });
-  if(seaFCL) typeCounts['↳ FCL'] = seaFCL;
-  if(seaLCL) typeCounts['↳ LCL'] = seaLCL;
-  if(seaUnknown) typeCounts['↳ Sea chưa phân loại FCL/LCL'] = seaUnknown;
+  if(typeCounts['Hàng nhập sea']){
+    typeCounts['↳ FCL'] = seaLoadCounts.FCL;
+    typeCounts['↳ LCL'] = seaLoadCounts.LCL;
+    if(seaLoadCounts['Chưa phân loại']>0) typeCounts['↳ Chưa phân loại'] = seaLoadCounts['Chưa phân loại'];
+  }
   renderBarBreakdown('breakdown-type-body', typeCounts, '', (label)=>{
     let arr;
     if(label==='↳ FCL' || label==='↳ LCL'){
       const load=label.replace('↳ ','');
-      arr=lots.filter(l=>activeLotIds.has(l.id) && (l.type||'').toLowerCase().includes('sea') && lotLoadType(l)===load);
-    } else if(label==='↳ Sea chưa phân loại FCL/LCL'){
-      arr=lots.filter(l=>activeLotIds.has(l.id) && (l.type||'').toLowerCase().includes('sea') && !lotLoadType(l));
+      arr=lots.filter(l=>activeLotIds.has(l.id) && (l.type||'')==='Hàng nhập sea' && lotLoadType(l)===load);
+    } else if(label==='↳ Chưa phân loại'){
+      arr=lots.filter(l=>activeLotIds.has(l.id) && (l.type||'')==='Hàng nhập sea' && !lotLoadType(l));
     } else {
       arr=lots.filter(l=> activeLotIds.has(l.id) && (l.type||'Khác')===label);
     }
