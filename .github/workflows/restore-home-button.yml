@@ -1,4 +1,4 @@
-name: Shipment statistics
+name: Shipment statistics retry
 on:
   push:
     paths:
