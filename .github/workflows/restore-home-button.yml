@@ -15,5 +15,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add index.html checklist-lo-hang.html
-          git diff --cached --quiet || (git commit -m "Add custom journal entry option" && git push)
-# custom-journal-trigger
+          git diff --cached --quiet || (git commit -m "Style shipment names with accent color" && git push)
+# shipment-name-accent-trigger
