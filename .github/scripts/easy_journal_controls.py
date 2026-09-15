@@ -1,110 +1,102 @@
 from pathlib import Path
 
-p = Path('checklist-lo-hang.html')
-s = p.read_text(encoding='utf-8')
+p=Path('checklist-lo-hang.html')
+s=p.read_text(encoding='utf-8')
 
-# Add detailed shipment mode + FCL/LCL controls to new shipment form.
-old = '''        <div class="toggle-group" id="typeToggle">
-          <button type="button" class="active" data-type="import">Nhập</button>
-          <button type="button" data-type="export">Xuất</button>
+# Add statistics panel above agenda.
+marker='''    <div class="agenda" id="agendaPanel">'''
+insert='''    <details class="manage" id="statsPanel" open>
+      <summary>📊 Thống kê lô hàng</summary>
+      <div class="manage-body">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px;">
+          <label style="font-weight:700;">Năm</label>
+          <select id="statsYear" style="height:36px;padding:0 10px;border:1px solid var(--line);border-radius:6px;background:#fff;"></select>
+          <label style="font-weight:700;">Từ ngày</label><input type="date" id="statsFrom" style="height:36px;border:1px solid var(--line);border-radius:6px;padding:0 8px;">
+          <label style="font-weight:700;">Đến ngày</label><input type="date" id="statsTo" style="height:36px;border:1px solid var(--line);border-radius:6px;padding:0 8px;">
+          <button class="btn-ghost-sm" id="statsReset">Cả năm</button>
         </div>
-        <button class="btn-main" id="addShipmentBtn">+ Thêm</button>'''
-new = '''        <div class="toggle-group" id="typeToggle">
-          <button type="button" class="active" data-type="import">Nhập</button>
-          <button type="button" data-type="export">Xuất</button>
-        </div>
-        <select id="newLotType" title="Loại hình" style="height:40px;padding:0 10px;border:1px solid var(--line);border-radius:7px;background:#fff;font-family:inherit;font-size:14px;">
-          <option value="Hàng nhập sea">Hàng nhập sea</option>
-          <option value="Hàng nhập air">Hàng nhập air</option>
-          <option value="Hàng xuất sea">Hàng xuất sea</option>
-          <option value="Hàng xuất air">Hàng xuất air</option>
-          <option value="Khác">Khác</option>
-        </select>
-        <select id="newLoadType" title="FCL / LCL" style="height:40px;padding:0 10px;border:1px solid var(--line);border-radius:7px;background:#fff;font-family:inherit;font-size:14px;">
-          <option value="FCL">FCL</option>
-          <option value="LCL">LCL</option>
-        </select>
-        <button class="btn-main" id="addShipmentBtn">+ Thêm</button>'''
-if old not in s:
-    raise SystemExit('new shipment form marker missing')
-s = s.replace(old, new, 1)
+        <div id="statsBody"></div>
+      </div>
+    </details>
 
-# Show FCL/LCL only for import sea and keep import/export toggle in sync with detailed mode.
-old = '''document.getElementById('typeToggle').addEventListener('click', function(e){
-  const btn = e.target.closest('button');
-  if(!btn) return;
-  selectedType = btn.dataset.type;
-  document.querySelectorAll('#typeToggle button').forEach(function(b){ b.classList.toggle('active', b===btn); });
-});'''
-new = '''function syncNewShipmentMode(){
-  const lotType=document.getElementById('newLotType');
-  const loadType=document.getElementById('newLoadType');
-  if(!lotType || !loadType) return;
-  const v=lotType.value;
-  selectedType=v.indexOf('xuất')>=0 ? 'export' : 'import';
-  document.querySelectorAll('#typeToggle button').forEach(function(b){ b.classList.toggle('active', b.dataset.type===selectedType); });
-  loadType.style.display = v==='Hàng nhập sea' ? '' : 'none';
+'''+marker
+if marker not in s: raise SystemExit('agenda marker missing')
+s=s.replace(marker,insert,1)
+
+# Render stats every time state renders.
+old='''function render(){
+  renderManage();
+  renderAgenda();
+  renderShipments();
+}'''
+new='''function render(){
+  renderManage();
+  renderStats();
+  renderAgenda();
+  renderShipments();
+}'''
+if old not in s: raise SystemExit('render marker missing')
+s=s.replace(old,new,1)
+
+# Statistics logic. Uses shipment createdAt when available, then milestone dates; archived shipments remain counted.
+marker='''function gatherMilestones(withinDays, typeFilter){'''
+logic=r'''function shipmentStatDate(sh){
+  if(sh.createdAt){ const d=new Date(sh.createdAt); if(!isNaN(d)) return d; }
+  const vals=Object.values(sh.dates||{}).filter(Boolean).sort();
+  if(vals.length){ const d=new Date(vals[0]); if(!isNaN(d)) return d; }
+  return null;
 }
-document.getElementById('newLotType').addEventListener('change', syncNewShipmentMode);
-document.getElementById('typeToggle').addEventListener('click', function(e){
-  const btn = e.target.closest('button');
-  if(!btn) return;
-  selectedType = btn.dataset.type;
-  document.querySelectorAll('#typeToggle button').forEach(function(b){ b.classList.toggle('active', b===btn); });
-  const lotType=document.getElementById('newLotType');
-  if(lotType){ lotType.value = selectedType==='import' ? 'Hàng nhập sea' : 'Hàng xuất sea'; syncNewShipmentMode(); }
-});
-syncNewShipmentMode();'''
-if old not in s:
-    raise SystemExit('type toggle marker missing')
-s = s.replace(old, new, 1)
+function renderStats(){
+  const body=document.getElementById('statsBody');
+  const yearEl=document.getElementById('statsYear');
+  if(!body||!yearEl) return;
+  const currentYear=new Date().getFullYear();
+  if(!yearEl.options.length){
+    const years=new Set([currentYear]);
+    state.shipments.forEach(sh=>{ const d=shipmentStatDate(sh); if(d) years.add(d.getFullYear()); });
+    [...years].sort((a,b)=>b-a).forEach(y=>{ const o=document.createElement('option'); o.value=y; o.textContent=y; yearEl.appendChild(o); });
+    yearEl.value=String(currentYear);
+  }
+  const y=Number(yearEl.value)||currentYear;
+  const fromEl=document.getElementById('statsFrom'), toEl=document.getElementById('statsTo');
+  const from=fromEl&&fromEl.value ? new Date(fromEl.value+'T00:00:00') : new Date(y,0,1);
+  const to=toEl&&toEl.value ? new Date(toEl.value+'T23:59:59') : new Date(y,11,31,23,59,59);
+  const c={seaImportFCL:0,seaImportLCL:0,seaImportUnknown:0,airImport:0,seaExport:0,airExport:0,other:0,total:0};
+  state.shipments.forEach(sh=>{
+    const d=shipmentStatDate(sh); if(!d || d<from || d>to) return;
+    c.total++;
+    const lt=sh.lotType||(sh.type==='export'?'Hàng xuất sea':'Hàng nhập sea');
+    if(lt==='Hàng nhập sea'){
+      if(sh.loadType==='FCL') c.seaImportFCL++;
+      else if(sh.loadType==='LCL') c.seaImportLCL++;
+      else c.seaImportUnknown++;
+    } else if(lt==='Hàng nhập air') c.airImport++;
+    else if(lt==='Hàng xuất sea') c.seaExport++;
+    else if(lt==='Hàng xuất air') c.airExport++;
+    else c.other++;
+  });
+  const rows=[['Sea Import – FCL',c.seaImportFCL],['Sea Import – LCL',c.seaImportLCL],['Sea Import – Chưa phân loại',c.seaImportUnknown],['Air Import',c.airImport],['Sea Export',c.seaExport],['Air Export',c.airExport],['Khác',c.other]];
+  body.innerHTML='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:9px;">'+rows.map(r=>'<div style="border:1px solid var(--line);border-radius:8px;padding:10px;background:#fff;"><div style="font-size:12px;color:var(--muted);">'+r[0]+'</div><div style="font-size:24px;font-weight:800;color:var(--navy);">'+r[1]+' <span style="font-size:12px;font-weight:600;">lô</span></div></div>').join('')+'</div><div style="margin-top:10px;font-weight:800;">Tổng: '+c.total+' lô</div>';
+}
 
-# Save detailed shipment mode and FCL/LCL on each new shipment.
-old = '''  state.shipments.unshift({ id:newId, name:name, type:selectedType, checks:checks, dates:{} });'''
-new = '''  const lotTypeEl=document.getElementById('newLotType');
-  const loadTypeEl=document.getElementById('newLoadType');
-  const lotType=lotTypeEl ? lotTypeEl.value : (selectedType==='export'?'Hàng xuất sea':'Hàng nhập sea');
-  const loadType=(lotType==='Hàng nhập sea' && loadTypeEl) ? loadTypeEl.value : '';
-  state.shipments.unshift({ id:newId, name:name, type:selectedType, lotType:lotType, loadType:loadType, checks:checks, dates:{} });'''
-if old not in s:
-    raise SystemExit('add shipment marker missing')
-s = s.replace(old, new, 1)
+'''+marker
+if marker not in s: raise SystemExit('gather marker missing')
+s=s.replace(marker,logic,1)
 
-# Show and allow editing detailed mode on every shipment card.
-old = '''    head.appendChild(badge);
+# Add createdAt to new shipments so future statistics are exact.
+old='''state.shipments.unshift({ id:newId, name:name, type:selectedType, lotType:lotType, loadType:loadType, checks:checks, dates:{} });'''
+new='''state.shipments.unshift({ id:newId, name:name, type:selectedType, lotType:lotType, loadType:loadType, checks:checks, dates:{}, createdAt:new Date().toISOString() });'''
+if old not in s: raise SystemExit('new shipment state marker missing')
+s=s.replace(old,new,1)
 
-    if(shipment.archived){'''
-new = '''    head.appendChild(badge);
+# Statistics controls.
+marker='''document.getElementById('addShipmentBtn').addEventListener('click', addShipment);'''
+controls='''document.getElementById('statsYear').addEventListener('change',()=>{ document.getElementById('statsFrom').value=''; document.getElementById('statsTo').value=''; renderStats(); });
+document.getElementById('statsFrom').addEventListener('change',renderStats);
+document.getElementById('statsTo').addEventListener('change',renderStats);
+document.getElementById('statsReset').addEventListener('click',()=>{ document.getElementById('statsFrom').value=''; document.getElementById('statsTo').value=''; renderStats(); });
+'''+marker
+if marker not in s: raise SystemExit('add button marker missing')
+s=s.replace(marker,controls,1)
 
-    const modeSelect=document.createElement('select');
-    modeSelect.title='Loại hình';
-    modeSelect.style.cssText='height:30px;padding:0 7px;border:1px solid var(--line);border-radius:6px;background:#fff;font-size:12px;';
-    ['Hàng nhập sea','Hàng nhập air','Hàng xuất sea','Hàng xuất air','Khác'].forEach(v=>{
-      const o=document.createElement('option'); o.value=v; o.textContent=v;
-      if(v===(shipment.lotType||(shipment.type==='export'?'Hàng xuất sea':'Hàng nhập sea'))) o.selected=true;
-      modeSelect.appendChild(o);
-    });
-    modeSelect.onchange=()=>{
-      shipment.lotType=modeSelect.value;
-      if(modeSelect.value.indexOf('xuất')>=0) shipment.type='export';
-      else if(modeSelect.value.indexOf('nhập')>=0) shipment.type='import';
-      if(modeSelect.value!=='Hàng nhập sea') shipment.loadType='';
-      saveState(); render();
-    };
-    head.appendChild(modeSelect);
-
-    if((shipment.lotType||(shipment.type==='export'?'Hàng xuất sea':'Hàng nhập sea'))==='Hàng nhập sea'){
-      const loadSelect=document.createElement('select');
-      loadSelect.title='FCL / LCL';
-      loadSelect.style.cssText='height:30px;padding:0 7px;border:1px solid var(--line);border-radius:6px;background:#fff;font-size:12px;font-weight:700;';
-      ['FCL','LCL'].forEach(v=>{ const o=document.createElement('option'); o.value=v; o.textContent=v; if(v===(shipment.loadType||'FCL')) o.selected=true; loadSelect.appendChild(o); });
-      loadSelect.onchange=()=>{ shipment.loadType=loadSelect.value; saveState(); };
-      head.appendChild(loadSelect);
-    }
-
-    if(shipment.archived){'''
-if old not in s:
-    raise SystemExit('shipment card marker missing')
-s = s.replace(old, new, 1)
-
-p.write_text(s, encoding='utf-8')
+p.write_text(s,encoding='utf-8')
