@@ -2,6 +2,8 @@ from pathlib import Path
 
 p=Path('checklist-lo-hang.html')
 s=p.read_text(encoding='utf-8')
+
+# Keep the custom free-text Journal option.
 old="""        JOURNAL_PRESETS.forEach((preset,idx)=>{
           const opt=document.createElement('option'); opt.value=idx; opt.textContent=preset.label;
           if(sameKeys(keys,preset.keys)) opt.selected=true;
@@ -34,9 +36,21 @@ new="""        let matchedPreset=false;
           await setItemJournalPreset(it,journalSelect.value);
         };
         row.appendChild(journalSelect);"""
-if old not in s:
-    if "customOpt.textContent='➕ Thêm nội dung khác...'" in s:
-        raise SystemExit(0)
+if old in s:
+    s=s.replace(old,new,1)
+elif "customOpt.textContent='➕ Thêm nội dung khác...'" not in s:
     raise SystemExit('Journal select structure changed; refusing broad edit')
-s=s.replace(old,new,1)
+
+# Shipment names: use the same warm orange accent as section headings instead of black.
+needle="""    nameInput.className = 'shipment-name';
+    nameInput.value ="""
+replacement="""    nameInput.className = 'shipment-name';
+    nameInput.style.color = 'var(--accent)';
+    nameInput.style.fontWeight = '700';
+    nameInput.value ="""
+if needle in s:
+    s=s.replace(needle,replacement,1)
+elif "nameInput.style.color = 'var(--accent)'" not in s:
+    raise SystemExit('Shipment name structure changed; refusing broad edit')
+
 p.write_text(s,encoding='utf-8')
