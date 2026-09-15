@@ -1,4 +1,4 @@
-name: Shipment statistics retry
+name: Page one FCL LCL summary
 on:
   push:
     paths:
@@ -14,5 +14,5 @@ jobs:
       - run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add checklist-lo-hang.html
-          git diff --cached --quiet || (git commit -m "Add shipment statistics dashboard" && git push)
+          git add index.html
+          git diff --cached --quiet || (git commit -m "Add FCL LCL to page one summary" && git push)
