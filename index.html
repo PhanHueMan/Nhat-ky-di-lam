@@ -654,7 +654,18 @@ const OPENERS = [
   "Một ngày làm việc chăm chỉ là một ngày xứng đáng được nghỉ ngơi thảnh thơi",
   "Mỗi sáng thức dậy là một cơ hội mới",
   "Sự bền bỉ luôn đi xa hơn sự vội vàng",
-  "Ai cũng có những ngày chưa như ý, điều đó hoàn toàn bình thường"
+  "Ai cũng có những ngày chưa như ý, điều đó hoàn toàn bình thường",
+  "Cuộc sống này đáng để ta yêu thương, dù có những ngày chưa suôn sẻ",
+  "Một tách trà ấm buổi sáng cũng đủ khiến ngày mới trở nên dịu dàng hơn",
+  "Ánh nắng xuyên qua khung cửa nhắc ta rằng hôm nay vẫn còn nhiều điều tốt đẹp",
+  "Hạnh phúc đôi khi chỉ đơn giản là một hơi thở sâu và một nụ cười nhẹ",
+  "Ta không cần chờ điều gì to lớn mới thấy cuộc đời này đáng sống",
+  "Mỗi tiếng cười, dù nhỏ, cũng làm cho thế giới này ấm áp hơn một chút",
+  "Yêu cuộc sống là học cách trân trọng cả những điều bình dị nhất",
+  "Có những niềm vui giản đơn mà ta hay quên mất giữa những bận rộn",
+  "Sức khỏe, tình thân và những buổi sáng bình yên chính là những món quà quý giá",
+  "Cuộc đời ngắn ngủi, nên hãy sống trọn vẹn với những gì mình có hôm nay",
+  "Chỉ cần còn thở, còn cười, là còn cả một thế giới để khám phá"
 ];
 const CLOSERS = [
   "Hãy tin vào những gì mình đang cố gắng xây dựng",
@@ -676,7 +687,24 @@ const CLOSERS = [
   "Yêu công việc mình đang làm cũng là yêu chính cuộc sống của mình",
   "Giữ vững tinh thần, mọi khó khăn rồi cũng sẽ qua",
   "Hãy tận hưởng hành trình, không chỉ chăm chăm vào đích đến",
-  "Ngày hôm nay của mình, hãy để nó trở nên ý nghĩa"
+  "Ngày hôm nay của mình, hãy để nó trở nên ý nghĩa",
+  "Hãy để tâm hồn mình được nghỉ ngơi giữa những điều giản dị",
+  "Cảm ơn cuộc sống vì những điều nhỏ bé mà ta đang có",
+  "Sống chậm lại một chút để cảm nhận trọn vẹn hơn từng khoảnh khắc",
+  "Hãy ôm lấy ngày hôm nay bằng tất cả sự biết ơn",
+  "Dù thế nào, hãy luôn dành cho mình một nụ cười thật lòng",
+  "Yêu thương bản thân cũng là cách yêu lấy cuộc sống này",
+  "Hãy để những điều tử tế nhỏ bé lan tỏa quanh mình mỗi ngày",
+  "Cuộc sống sẽ dịu dàng hơn nếu ta biết dịu dàng với chính mình",
+  "Hãy tận hưởng từng hơi thở, vì đó cũng là một phần của hạnh phúc",
+  "Mong hôm nay của bạn tràn đầy những điều nhỏ bé nhưng ấm áp",
+  "Hãy nhớ rằng mình xứng đáng với những điều tốt đẹp",
+  "Sống trọn vẹn hôm nay, vì đó chính là món quà của hiện tại",
+  "Hãy để trái tim mình rộng mở với những niềm vui bất ngờ",
+  "Chúc bạn một ngày an yên và tràn đầy năng lượng tích cực",
+  "Hãy giữ cho mình một trái tim biết yêu thương và biết ơn",
+  "Cứ sống thật với cảm xúc của mình, đó cũng là một cách yêu đời",
+  "Hy vọng ngày hôm nay mang đến cho bạn thật nhiều nụ cười"
 ];
  
 let lots = [];
@@ -1645,7 +1673,11 @@ function entryWorkload(e){
   return steps+recruit+mkt+other;
 }
 function renderComparisonChart(periodLogs){
-  let title, data, pieData;
+  // Lưu ý: "entries" luôn là mảng [label, value] được đẩy vào theo đúng thứ tự
+  // mong muốn (không dùng object rồi Object.entries), vì các key số nguyên
+  // không có số 0 đứng đầu (vd "10","14") sẽ bị JS tự sắp lại theo số tăng
+  // dần và đẩy lên trước các key có số 0 đứng đầu (vd "03","07"), gây lộn xộn.
+  let title, entries, pieData;
   if(summaryMode==='week'){
     title = 'Năng suất công việc';
     const labels=['T2','T3','T4','T5','T6','T7','CN'];
@@ -1654,9 +1686,8 @@ function renderComparisonChart(periodLogs){
       const d = new Date(e.date+'T00:00:00');
       raw[labels[(d.getDay()+6)%7]] += entryWorkload(e);
     });
-    data = {};
-    labels.forEach(l=>{ if(raw[l]>0) data[l]=raw[l]; });
-    pieData = data;
+    entries = labels.filter(l=>raw[l]>0).map(l=>[l, raw[l]]);
+    pieData = Object.fromEntries(entries);
   } else if(summaryMode==='month'){
     title = 'Năng suất công việc';
     const [y,m] = currentPeriod.split('-').map(Number);
@@ -1666,12 +1697,12 @@ function renderComparisonChart(periodLogs){
     const endDay = isCurrentMonth ? Number(today.slice(8,10)) : lastDay;
     const raw = {};
     periodLogs.forEach(e=>{ raw[e.date] = (raw[e.date]||0) + entryWorkload(e); });
-    data = {};
+    entries = [];
     const weekRaw = {}, weekOrder = [];
     for(let d=1; d<=endDay; d++){
       const dateStr = `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
       const v = raw[dateStr]||0;
-      if(v>0) data[String(d).padStart(2,'0')] = v;
+      if(v>0) entries.push([String(d).padStart(2,'0'), v]);
       const wk = weekKey(dateStr);
       if(!(wk in weekRaw)){ weekRaw[wk]=0; weekOrder.push(wk); }
       weekRaw[wk] += v;
@@ -1690,11 +1721,11 @@ function renderComparisonChart(periodLogs){
     const endMonth = isCurrentYear ? Number(today.slice(5,7)) : 12;
     const raw = {};
     periodLogs.forEach(e=>{ const wk = weekKey(e.date); raw[wk] = (raw[wk]||0) + entryWorkload(e); });
-    data = {};
+    entries = [];
     for(let w=1; w<=endWeek; w++){
       const wk = `${y}-W${String(w).padStart(2,'0')}`;
       const v = raw[wk]||0;
-      if(v>0) data['Tuần '+w] = v;
+      if(v>0) entries.push(['Tuần '+w, v]);
     }
     const monthRaw = {};
     periodLogs.forEach(e=>{ const mm = e.date.slice(5,7); monthRaw[mm] = (monthRaw[mm]||0) + entryWorkload(e); });
@@ -1706,7 +1737,6 @@ function renderComparisonChart(periodLogs){
     }
   }
   $('compare-title').textContent = title;
-  const entries = Object.entries(data);
   const pieEntries = Object.entries(pieData);
   const body = $('compare-body');
   if(entries.length===0){
@@ -1736,7 +1766,7 @@ function renderComparisonChart(periodLogs){
     </div>`;
 }
 function mountainChartSVG(entries){
-  const w = 620, h = 210, padLeft = 6, padRight = 12, padTop = 10, padBottom = 22;
+  const w = 620, h = 210, padLeft = 26, padRight = 26, padTop = 10, padBottom = 22;
   const values = entries.map(([,v])=>v);
   const rawMax = Math.max(...values, 1);
   const rawMin = Math.min(...values, 0);
@@ -1766,7 +1796,10 @@ function mountainChartSVG(entries){
   const axisLabels = points.map((p,i)=>{
     if(i % showEvery !== 0 && i !== n-1) return '';
     const short = p.label.length>8 ? p.label.slice(0,8) : p.label;
-    return `<text x="${p.x.toFixed(1)}" y="${h-6}" font-size="8" text-anchor="middle" fill="#726C5F">${escapeHtml(short)}</text>`;
+    // Nhãn đầu/cuối canh theo mép trong (start/end) thay vì "middle" để
+    // không bị tràn ra ngoài viewBox và bị cắt chữ.
+    const anchor = i===0 ? 'start' : (i===n-1 ? 'end' : 'middle');
+    return `<text x="${p.x.toFixed(1)}" y="${h-6}" font-size="8" text-anchor="${anchor}" fill="#726C5F">${escapeHtml(short)}</text>`;
   }).join('');
 
   return `<svg viewBox="0 0 ${w} ${h}" class="mountain-svg" xmlns="http://www.w3.org/2000/svg">
@@ -1929,6 +1962,26 @@ function initHeaderDate(){
    renderCalDayDetail();
    renderDoneLots();
 })();
+
+/* ---------- Tự làm mới câu nói/ngày/mascot khi tab được mở lại,
+   phòng trường hợp app/PWA để mở nhiều ngày không tự reload ---------- */
+let __lastRenderedISODate = todayISO();
+function refreshDailyBitsIfDateChanged(){
+  const nowISO = todayISO();
+  if(nowISO === __lastRenderedISODate) return;
+  __lastRenderedISODate = nowISO;
+  initHeaderDate();
+  document.body.classList.remove('body-theme-1','body-theme-2','body-theme-3','body-theme-4','body-theme-5');
+  document.body.classList.add('body-theme-'+((dayOfYear(new Date())%5)+1));
+  renderWeekdayMascot();
+  $('daily-quote').textContent = buildDailyQuote();
+}
+document.addEventListener('visibilitychange', ()=>{
+  if(document.visibilityState === 'visible') refreshDailyBitsIfDateChanged();
+});
+window.addEventListener('focus', refreshDailyBitsIfDateChanged);
+// Phòng khi tab để mở liên tục qua nửa đêm mà không chuyển tab/focus lại
+setInterval(refreshDailyBitsIfDateChanged, 5 * 60 * 1000);
 </script>
 <div class="next-page-link-wrap"><a href="checklist-lo-hang.html">Nhật ký tiếp theo -></a></div>
 </body>
